@@ -3,7 +3,7 @@ use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 fn default_geoip_db_path() -> PathBuf {
-    "./GeoLite2-Country.mmdb".into()
+    "./GeoIP2-City.mmdb".into()
 }
 
 fn default_host() -> String {
@@ -20,6 +20,10 @@ fn default_version_file() -> PathBuf {
 
 fn default_metrics_target() -> String {
     "localhost:8125".to_owned()
+}
+
+fn default_adzerk_api_key() -> String {
+    "test".to_owned()
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -52,6 +56,9 @@ pub struct Settings {
     /// required. Defaults to "localhost:8125".
     #[serde(default = "default_metrics_target")]
     pub metrics_target: String,
+
+    #[serde(default = "default_adzerk_api_key")]
+    pub adzerk_api_key: String,
 }
 
 impl Default for Settings {
@@ -85,7 +92,7 @@ mod tests {
         assert!(!settings.debug);
         assert_eq!(
             settings.geoip_db_path.to_str(),
-            Some("./GeoLite2-Country.mmdb")
+            Some("./GeoIP2-City.mmdb")
         );
         assert_eq!(settings.host, "[::]");
         assert_eq!(settings.port, 8000);

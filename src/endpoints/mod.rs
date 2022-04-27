@@ -1,10 +1,11 @@
-pub mod classify;
 pub mod debug;
+pub mod delete_user;
 pub mod dockerflow;
+pub mod spocs;
 use crate::{geoip::GeoIp, APP_NAME};
 use std::{default::Default, path::PathBuf, sync::Arc};
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct EndpointState {
     pub geoip: Arc<GeoIp>,
     pub trusted_proxies: Vec<ipnet::IpNet>,

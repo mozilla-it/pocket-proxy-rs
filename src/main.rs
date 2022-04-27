@@ -2,6 +2,7 @@
 //!
 #![deny(clippy::all)]
 
+pub mod adzerk_client;
 pub mod endpoints;
 pub mod errors;
 pub mod geoip;
@@ -11,7 +12,8 @@ pub mod settings;
 pub mod utils;
 
 use crate::{
-    endpoints::{classify, debug, dockerflow, EndpointState},
+    adzerk_client::AdzerkClient,
+    endpoints::{debug, delete_user, dockerflow, EndpointState},
     errors::ClassifyError,
     geoip::GeoIp,
     settings::Settings,
@@ -20,9 +22,11 @@ use actix_web::{
     web::{self, Data},
     App,
 };
+
 use std::sync::Arc;
 
 const APP_NAME: &str = "classify-client";
+const NETWORK_ID: u32 = 10250;
 
 #[actix_web::main]
 async fn main() -> Result<(), ClassifyError> {
@@ -35,6 +39,7 @@ async fn main() -> Result<(), ClassifyError> {
         port,
         trusted_proxy_list,
         version_file,
+        adzerk_api_key,
         ..
     } = Settings::load()?;
 
@@ -62,16 +67,15 @@ async fn main() -> Result<(), ClassifyError> {
     slog::info!(app_log, "starting server on https://{}", addr);
 
     actix_web::HttpServer::new(move || {
+        let base_url = format!("https://e-{0}.adzerk.net", NETWORK_ID);
+        let adzerk_client = AdzerkClient::new(base_url, NETWORK_ID, adzerk_api_key.clone());
         let mut app = App::new()
             .app_data(Data::new(state.clone()))
+            .app_data(Data::new(adzerk_client))
             .wrap(metrics::ResponseTimer)
             .wrap(logging::RequestLogger)
             // API Endpoints
-            .service(web::resource("/").route(web::get().to(classify::classify_client)))
-            .service(
-                web::resource("/api/v1/classify_client/")
-                    .route(web::get().to(classify::classify_client)),
-            )
+            .service(web::resource("/user").route(web::delete().to(delete_user::delete_user)))
             // Dockerflow Endpoints
             .service(
                 web::resource("/__lbheartbeat__").route(web::get().to(dockerflow::lbheartbeat)),

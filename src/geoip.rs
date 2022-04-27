@@ -1,6 +1,6 @@
 use crate::errors::ClassifyError;
-use cadence::{prelude::*, StatsdClient};
-use maxminddb::{self, geoip2, MaxMindDBError};
+use cadence::{StatsdClient};
+use maxminddb::{self, geoip2};
 use std::{fmt, net::IpAddr, path::PathBuf, sync::Arc};
 
 pub struct GeoIp {
@@ -8,37 +8,28 @@ pub struct GeoIp {
     metrics: Arc<StatsdClient>,
 }
 
+pub struct ClientLocation<'a> {
+    pub country: Option<&'a str>,
+    pub region: Option<&'a str>,
+}
+
 impl GeoIp {
     pub fn builder() -> GeoIpBuilder {
         GeoIpBuilder::default()
     }
 
-    pub fn locate(&self, ip: IpAddr) -> Result<Option<geoip2::Country>, ClassifyError> {
+    pub fn locate(&self, ip: IpAddr) -> Result<ClientLocation, ClassifyError> {
         self.reader
             .as_ref()
             .ok_or_else(|| ClassifyError::new("No geoip database available"))?
             .lookup(ip)
-            .map(|country_info: Option<geoip2::Country>| {
-                // Send a metrics ping about the geolocation result
-                let iso_code = country_info
-                    .clone()
-                    .and_then(|country_info| country_info.country)
-                    .and_then(|country| country.iso_code);
-                self.metrics
-                    .incr_with_tags("location")
-                    .with_tag("country", iso_code.unwrap_or("unknown"))
-                    .send();
-                country_info
-            })
-            .or_else(|err| match err {
-                MaxMindDBError::AddressNotFoundError(_) => {
-                    self.metrics
-                        .incr_with_tags("location")
-                        .with_tag("country", "unknown")
-                        .send();
-                    Ok(None)
-                }
-                _ => Err(err),
+            .map(|city_info: geoip2::City| ClientLocation {
+                country: city_info.country.and_then(|c| c.iso_code),
+                region: city_info
+                    .subdivisions
+                    .as_ref()
+                    .and_then(|subs| subs.last())
+                    .and_then(|sub| sub.iso_code),
             })
             .map_err(|err| err.into())
     }
@@ -55,7 +46,7 @@ impl fmt::Debug for GeoIp {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(
             fmt,
-            "GeoIpActor {{ reader: {}, metrics: {:?} }}",
+            "GeoIp {{ reader: {}, metrics: {:?} }}",
             if self.reader.is_some() {
                 "Some(...)"
             } else {
@@ -101,48 +92,19 @@ impl GeoIpBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::metrics::tests::TestMetricSink;
-    use cadence::StatsdClient;
-    use std::{
-        ops::Deref,
-        sync::{Arc, Mutex},
-    };
-
     #[test]
     fn test_geoip_works() -> Result<(), Box<dyn std::error::Error>> {
         let geoip = super::GeoIp::builder()
-            .path("./GeoLite2-Country.mmdb")
+            .path("./GeoIP2-City.mmdb")
             .build()?;
 
-        let ip = "7.7.7.7".parse()?;
-        let rv = geoip.locate(ip).unwrap().unwrap();
-        assert_eq!(rv.country.unwrap().iso_code.unwrap(), "US");
-        Ok(())
-    }
-
-    #[test]
-    fn test_geoip_sends_metrics() -> Result<(), Box<dyn std::error::Error>> {
-        let log = Arc::new(Mutex::new(Vec::new()));
-        let metrics = Arc::new(StatsdClient::from_sink(
-            "test",
-            TestMetricSink { log: log.clone() },
-        ));
-        let geoip = super::GeoIp::builder()
-            .path("./GeoLite2-Country.mmdb")
-            .metrics(metrics)
-            .build()?;
-
-        geoip.locate("7.7.7.7".parse()?)?;
-        geoip.locate("127.0.0.1".parse()?)?;
-
-        assert_eq!(
-            *log.lock().unwrap().deref(),
-            vec![
-                "test.location:1|c|#country:US",
-                "test.location:1|c|#country:unknown",
-            ]
-        );
-
+        // Test with an IP address in the UK to see whether the right subdivision is extracted.
+        // This is the IP address of st-andrews.ac.uk, which should not change location anytime
+        // soon.
+        let ip = "138.251.7.84".parse()?;
+        let location = geoip.locate(ip).unwrap();
+        assert_eq!(location.country.unwrap(), "GB");
+        assert_eq!(location.region.unwrap(), "FIF");
         Ok(())
     }
 }

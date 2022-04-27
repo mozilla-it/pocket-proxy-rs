@@ -12,6 +12,7 @@ version = "0.2.0"
 actix = "^0.13.0"
 actix-web = "^4.0.1"
 actix-rt = "^2"
+awc = "3.0.0"
 cadence = "^0.29.0"
 envy = "^0.4.0"
 futures = "^0.3"
@@ -27,6 +28,7 @@ slog-json = "2.3.0"
 slog-mozlog-json = "0.1.0"
 slog-term = "2.4.1"
 slog_derive = "0.2"
+uuid = "1.0.0"
 
 [dependencies.chrono]
 features = ["serde"]
@@ -35,3 +37,6 @@ version = "^0.4"
 [dependencies.ipnet]
 features = ["serde"]
 version = "^2"
+
+[dev-dependencies]
+wiremock = "0.5.13"

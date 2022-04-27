@@ -1,4 +1,4 @@
-use crate::{endpoints::EndpointState, errors::ClassifyError};
+use crate::{endpoints::EndpointState, errors::ClassifyError, geoip::ClientLocation};
 use actix_web::{web::Data, HttpResponse};
 use serde_derive::Serialize;
 use std::{
@@ -19,26 +19,16 @@ struct HeartbeatResponse {
 pub async fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, ClassifyError> {
     let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
 
-    app_data
-        .geoip
-        .locate(ip)
-        .and_then(|res| match res {
-            Some(country_info) => country_info
-                .country
-                .and_then(|country| country.iso_code)
-                .map(|iso_code| Ok(!iso_code.is_empty()))
-                .unwrap_or(Ok(false)),
-            None => Ok(false),
-        })
-        .or(Ok(false))
-        .map(|res| {
-            let mut resp = if res {
-                HttpResponse::Ok()
-            } else {
-                HttpResponse::ServiceUnavailable()
-            };
-            resp.json(HeartbeatResponse { geoip: res })
-        })
+    let geoip_available = match app_data .geoip .locate(ip)? {
+        ClientLocation { country: Some(country), .. } => !country.is_empty(),
+        _ => false,
+    };
+    let mut response = if geoip_available {
+        HttpResponse::Ok()
+    } else {
+        HttpResponse::ServiceUnavailable()
+    };
+    Ok(response.json(HeartbeatResponse { geoip: geoip_available }))
 }
 
 pub async fn version(app_data: Data<EndpointState>) -> HttpResponse {

@@ -52,3 +52,5 @@ impl_from_error!(ipnet::AddrParseError);
 impl_from_error!(maxminddb::MaxMindDBError);
 impl_from_error!(std::io::Error);
 impl_from_error!(std::net::AddrParseError);
+impl_from_error!(awc::error::SendRequestError);
+impl_from_error!(uuid::Error);
