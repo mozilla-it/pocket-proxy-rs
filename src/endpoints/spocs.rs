@@ -1,16 +1,18 @@
-use crate::{adzerk_client::AdzerkClient, errors::ClassifyError, utils::RequestClientIp};
+use std::collections::HashMap;
+
+use crate::{adzerk::client::AdzerkClient, errors::ClassifyError, utils::RequestClientIp};
 use actix_web::{
     web::{self, Data},
     HttpRequest, HttpResponse,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::EndpointState;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Spoc {
-    pub version: String,
+pub struct SpocsRequest {
+    pub version: u32,
     pub consumer_key: String,
     pub pocket_id: String,
     pub site: Option<u32>,
@@ -31,8 +33,46 @@ pub struct Placement {
     pub count: Option<u32>,
 }
 
+#[derive(Serialize)]
+pub struct SpocsResponse {
+    pub settings: serde_json::Value,
+    pub spocs: Vec<Spoc>,
+}
+
+#[derive(Serialize)]
+pub struct Spoc {
+    pub id: u32,
+    pub flight_id: u32,
+    pub campaign_id: u32,
+    pub title: String,
+    pub url: String,
+    pub domain: String,
+    pub excerpt: String,
+    pub priority: u32,
+    pub context: String,
+    pub raw_image_src: String,
+    pub image_src: String,
+    pub shim: Shim,
+    pub parameter_set: String,
+    pub caps: serde_json::Value,
+    pub domain_affinities: HashMap<String, u32>,
+    pub personalization_models: HashMap<String, u32>,
+    pub cta: Option<String>,
+    pub collection_title: Option<String>,
+    pub sponsor: Option<String>,
+    pub sponsored_by_override: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct Shim {
+    pub click: String,
+    pub impression: String,
+    pub delete: String,
+    pub save: String,
+}
+
 pub async fn spocs(
-    mut spoc: web::Json<Spoc>,
+    mut spoc: web::Json<SpocsRequest>,
     state: Data<EndpointState>,
     adzerk_client: Data<AdzerkClient>,
     req: HttpRequest,

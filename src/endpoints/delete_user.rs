@@ -1,4 +1,4 @@
-use crate::{adzerk_client::AdzerkClient, errors::ClassifyError};
+use crate::{adzerk::client::AdzerkClient, errors::ClassifyError};
 use actix_web::{
     web::{self, Data},
     HttpResponse,
@@ -21,7 +21,7 @@ pub async fn delete_user(
 
 #[cfg(test)]
 mod tests {
-    use crate::adzerk_client::AdzerkClient;
+    use crate::adzerk::client::AdzerkClient;
     use actix_web::{
         test::{self, TestRequest},
         web::{self, Data}, App,

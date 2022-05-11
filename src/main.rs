@@ -2,7 +2,7 @@
 //!
 #![deny(clippy::all)]
 
-pub mod adzerk_client;
+pub mod adzerk;
 pub mod endpoints;
 pub mod errors;
 pub mod geoip;
@@ -12,7 +12,7 @@ pub mod settings;
 pub mod utils;
 
 use crate::{
-    adzerk_client::AdzerkClient,
+    adzerk::client::AdzerkClient,
     endpoints::{debug, delete_user, dockerflow, EndpointState},
     errors::ClassifyError,
     geoip::GeoIp,
