@@ -35,7 +35,7 @@ pub struct Placement {
 
 #[derive(Serialize)]
 pub struct SpocsResponse {
-    pub settings: serde_json::Value,
+    pub settings: &'static serde_json::Value,
     pub spocs: Vec<Spoc>,
 }
 
@@ -54,13 +54,16 @@ pub struct Spoc {
     pub image_src: String,
     pub shim: Shim,
     pub parameter_set: String,
-    pub caps: serde_json::Value,
-    pub domain_affinities: HashMap<String, u32>,
+    pub caps: &'static serde_json::Value,
+    pub domain_affinities: &'static HashMap<String, u32>,
     pub personalization_models: HashMap<String, u32>,
+    pub min_score: f64,
+    pub item_score: f64,
     pub cta: Option<String>,
     pub collection_title: Option<String>,
     pub sponsor: Option<String>,
     pub sponsored_by_override: Option<String>,
+    pub is_video: Option<bool>,
 }
 
 #[derive(Serialize)]

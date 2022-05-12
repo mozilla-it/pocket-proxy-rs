@@ -26,7 +26,6 @@ use actix_web::{
 use std::sync::Arc;
 
 const APP_NAME: &str = "classify-client";
-const NETWORK_ID: u32 = 10250;
 
 #[actix_web::main]
 async fn main() -> Result<(), ClassifyError> {
@@ -67,8 +66,7 @@ async fn main() -> Result<(), ClassifyError> {
     slog::info!(app_log, "starting server on https://{}", addr);
 
     actix_web::HttpServer::new(move || {
-        let base_url = format!("https://e-{0}.adzerk.net", NETWORK_ID);
-        let adzerk_client = AdzerkClient::new(base_url, NETWORK_ID, adzerk_api_key.clone());
+        let adzerk_client = AdzerkClient::new(adzerk_api_key.clone());
         let mut app = App::new()
             .app_data(Data::new(state.clone()))
             .app_data(Data::new(adzerk_client))

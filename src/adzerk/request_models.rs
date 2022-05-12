@@ -7,7 +7,7 @@ pub struct UserKey<'a> {
     pub user_key: &'a str,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Placement {
     pub div_name: String,
@@ -19,25 +19,18 @@ pub struct Placement {
     pub event_ids: [u32; 2],
 }
 
-impl Placement {
-    pub fn new(network_id: u32) -> Self {
-        Self {
-            div_name: "spocs".to_owned(),
-            network_id,
-            site_id: 1070098,
-            ad_types: vec![2401, 3617],
-            zone_ids: vec![217995],
-            count: 10,
-            event_ids: [17, 20],
-        }
+impl Default for Placement {
+    fn default() -> Self {
+        super::defaults::PLACEMENT.clone()
     }
+}
 
+impl Placement {
     pub fn from_spoc_placement(
         placement: spocs::Placement,
-        network_id: u32,
         site: Option<u32>,
     ) -> Self {
-        let mut result = Placement::new(network_id);
+        let mut result = Placement::default();
         if !placement.ad_types.is_empty() {
             result.ad_types = placement.ad_types;
         }
@@ -65,8 +58,8 @@ pub struct DecisionRequest {
     pub keywords: Vec<String>,
 }
 
-impl DecisionRequest {
-    pub fn from_spocs_request(spoc: SpocsRequest, network_id: u32) -> Self {
+impl From<SpocsRequest> for DecisionRequest {
+    fn from(spoc: SpocsRequest) -> Self {
         // __add_targeting
         let user = User {
             key: spoc.pocket_id,
@@ -86,11 +79,11 @@ impl DecisionRequest {
 
         // __add_placements && __add_site
         let placements = if spoc.placements.is_empty() {
-            vec![Placement::new(network_id)]
+            vec![Placement::default()]
         } else {
             spoc.placements
                 .into_iter()
-                .map(|p| Placement::from_spoc_placement(p, network_id, spoc.site))
+                .map(|p| Placement::from_spoc_placement(p, spoc.site))
                 .collect()
         };
 
@@ -109,7 +102,7 @@ pub struct DecisionResponse {}
 #[cfg(test)]
 mod tests {
     use super::DecisionRequest;
-    use crate::endpoints::spocs::SpocsRequest;
+    use crate::{endpoints::spocs::SpocsRequest, adzerk::defaults};
     use serde_json::{from_value, json, to_value};
 
     #[test]
@@ -146,7 +139,7 @@ mod tests {
                         17,
                         20
                     ],
-                    "networkId": 10250,
+                    "networkId": defaults::NETWORK_ID,
                     "siteId": 1070098,
                     "zoneIds": [
                         217758,
@@ -160,7 +153,7 @@ mod tests {
             "keywords": ["US", "US-IL"]
         });
         let actual_decision_request =
-            to_value(DecisionRequest::from_spocs_request(spoc_request, 10250)).unwrap();
+            to_value(DecisionRequest::from(spoc_request)).unwrap();
         assert_eq!(actual_decision_request, expected_decision_request);
     }
 }

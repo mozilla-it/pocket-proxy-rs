@@ -8,24 +8,28 @@ use crate::{
     errors::ClassifyError,
 };
 
-use super::models::{UserKey, DecisionRequest};
+use super::{request_models::{UserKey, DecisionRequest}, defaults};
 
 pub struct AdzerkClient {
     http_client: Client,
     base_url: String,
-    network_id: u32,
     adzerk_api_key: String,
 }
 
 impl AdzerkClient {
-    pub fn new(base_url: String, network_id: u32, adzerk_api_key: String) -> Self {
+    pub fn new(adzerk_api_key: String) -> Self {
         let http_client = Client::builder().timeout(Duration::from_secs(30)).finish();
+        let base_url = defaults::BASE_URL.clone();
         Self {
             http_client,
             base_url,
-            network_id,
             adzerk_api_key,
         }
+    }
+
+    pub fn with_base_url(mut self, base_url: String) -> Self {
+        self.base_url = base_url;
+        self
     }
 
     pub async fn delete_user(&self, pocket_id: &str) -> Result<StatusCode, ClassifyError> {
@@ -34,7 +38,7 @@ impl AdzerkClient {
         };
         let status = self
             .http_client
-            .delete(format!("{}/udb/{}/", self.base_url, self.network_id))
+            .delete(format!("{}/udb/{}/", self.base_url, defaults::NETWORK_ID))
             .insert_header(("X-Adzerk-ApiKey", self.adzerk_api_key.as_str()))
             .query(&user_key)
             .unwrap()
@@ -45,7 +49,7 @@ impl AdzerkClient {
     }
 
     pub async fn get_decisions(&self, spoc: SpocsRequest) -> Result<SpocsResponse, ClassifyError> {
-        let decision_request = DecisionRequest::from_spocs_request(spoc, self.network_id);
+        let decision_request = DecisionRequest::from(spoc);
         let status = self
             .http_client
             .post(format!("{}/api/v2", self.base_url))

@@ -19,8 +19,11 @@ struct HeartbeatResponse {
 pub async fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, ClassifyError> {
     let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
 
-    let geoip_available = match app_data .geoip .locate(ip)? {
-        ClientLocation { country: Some(country), .. } => !country.is_empty(),
+    let geoip_available = match app_data.geoip.locate(ip) {
+        Ok(ClientLocation {
+            country: Some(country),
+            ..
+        }) => !country.is_empty(),
         _ => false,
     };
     let mut response = if geoip_available {
@@ -28,7 +31,9 @@ pub async fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, Cl
     } else {
         HttpResponse::ServiceUnavailable()
     };
-    Ok(response.json(HeartbeatResponse { geoip: geoip_available }))
+    Ok(response.json(HeartbeatResponse {
+        geoip: geoip_available,
+    }))
 }
 
 pub async fn version(app_data: Data<EndpointState>) -> HttpResponse {
