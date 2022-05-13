@@ -1,4 +1,4 @@
-use crate::{endpoints::EndpointState, errors::ClassifyError, geoip::ClientLocation};
+use crate::{endpoints::EndpointState, errors::ProxyError, geoip::ClientLocation};
 use actix_web::{web::Data, HttpResponse};
 use serde_derive::Serialize;
 use std::{
@@ -16,7 +16,7 @@ struct HeartbeatResponse {
     geoip: bool,
 }
 
-pub async fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, ClassifyError> {
+pub async fn heartbeat(app_data: Data<EndpointState>) -> Result<HttpResponse, ProxyError> {
     let ip = IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4));
 
     let geoip_available = match app_data.geoip.locate(ip) {

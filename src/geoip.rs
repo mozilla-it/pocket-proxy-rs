@@ -1,5 +1,5 @@
-use crate::errors::ClassifyError;
-use cadence::{StatsdClient};
+use crate::errors::ProxyError;
+use cadence::StatsdClient;
 use maxminddb::{self, geoip2};
 use std::{fmt, net::IpAddr, path::PathBuf, sync::Arc};
 
@@ -18,10 +18,10 @@ impl GeoIp {
         GeoIpBuilder::default()
     }
 
-    pub fn locate(&self, ip: IpAddr) -> Result<ClientLocation, ClassifyError> {
+    pub fn locate(&self, ip: IpAddr) -> Result<ClientLocation, ProxyError> {
         self.reader
             .as_ref()
-            .ok_or_else(|| ClassifyError::new("No geoip database available"))?
+            .ok_or_else(|| ProxyError::new("No geoip database available"))?
             .lookup(ip)
             .map(|city_info: geoip2::City| ClientLocation {
                 country: city_info.country.and_then(|c| c.iso_code),
@@ -78,7 +78,7 @@ impl GeoIpBuilder {
         self
     }
 
-    pub fn build(self) -> Result<GeoIp, ClassifyError> {
+    pub fn build(self) -> Result<GeoIp, ProxyError> {
         let reader = match self.path {
             Some(path) => Some(maxminddb::Reader::open_readfile(path)?),
             None => None,
@@ -94,9 +94,7 @@ impl GeoIpBuilder {
 mod tests {
     #[test]
     fn test_geoip_works() -> Result<(), Box<dyn std::error::Error>> {
-        let geoip = super::GeoIp::builder()
-            .path("./GeoIP2-City.mmdb")
-            .build()?;
+        let geoip = super::GeoIp::builder().path("./GeoIP2-City.mmdb").build()?;
 
         // Test with an IP address in the UK to see whether the right subdivision is extracted.
         // This is the IP address of st-andrews.ac.uk, which should not change location anytime

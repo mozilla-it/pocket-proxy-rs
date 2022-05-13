@@ -1,42 +1,36 @@
 [package]
 authors = [
-    "Michael Cooper <mcooper@mozilla.com>",
-    "Mathieu Leplatre <mleplatre@mozilla.com>"
+    "Brett Kochendorfer <bkochendorfer@mozilla.com>",
+    "Sven Marnach <smarnach@mozilla.com>",
 ]
 edition = "2021"
-rust-version = "1.56"
-name = "classify-client"
-version = "0.2.0"
+rust-version = "1.60"
+name = "pocket-proxy"
+version = "0.1.0"
 
 [dependencies]
-actix = "^0.13.0"
-actix-web = "^4.0.1"
-actix-rt = "^2"
+actix-web = "4.0.1"
 awc = "3.0.0"
-cadence = "^0.29.0"
-envy = "^0.4.0"
-futures = "^0.3"
-lazy_static = "^1.2.0"
-maxminddb = "^0.23.0"
-regex = "^1.1.0"
-serde = "^1.0.80"
-serde_derive = "^1.0.80"
-serde_json = "^1.0.33"
-slog = "^2.4"
-slog-async = "2.3.0"
-slog-json = "2.3.0"
+cadence = "0.29.0"
+envy = "0.4.2"
+futures = "0.3.21"
+lazy_static = "1.4.0"
+maxminddb = "0.23.0"
+regex = "1.5.5"
+serde = "1.0.137"
+serde_derive = "1.0.137"
+serde_json = "1.0.81"
+slog = "2.7.0"
+slog-async = "2.7.0"
 slog-mozlog-json = "0.1.0"
-slog-term = "2.4.1"
+slog-term = "2.9.0"
 slog_derive = "0.2"
 uuid = "1.0.0"
 
-[dependencies.chrono]
-features = ["serde"]
-version = "^0.4"
-
 [dependencies.ipnet]
 features = ["serde"]
-version = "^2"
+version = "2.5.0"
 
 [dev-dependencies]
+actix-rt = "2.7.0"
 wiremock = "0.5.13"

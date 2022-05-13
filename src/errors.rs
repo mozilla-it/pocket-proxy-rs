@@ -3,11 +3,11 @@ use serde_derive::Serialize;
 use std::fmt;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct ClassifyError {
+pub struct ProxyError {
     message: String,
 }
 
-impl ClassifyError {
+impl ProxyError {
     pub fn new<M: Into<String>>(message: M) -> Self {
         let message = message.into();
         Self { message }
@@ -21,16 +21,16 @@ impl ClassifyError {
 }
 
 // Use default implementation of Error
-impl std::error::Error for ClassifyError {}
+impl std::error::Error for ProxyError {}
 
-impl fmt::Display for ClassifyError {
+impl fmt::Display for ProxyError {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{:?}", self)?;
         Ok(())
     }
 }
 
-impl actix_web::error::ResponseError for ClassifyError {
+impl actix_web::error::ResponseError for ProxyError {
     fn error_response(&self) -> HttpResponse {
         HttpResponse::InternalServerError().json(self)
     }
@@ -38,7 +38,7 @@ impl actix_web::error::ResponseError for ClassifyError {
 
 macro_rules! impl_from_error {
     ($error: ty) => {
-        impl From<$error> for ClassifyError {
+        impl From<$error> for ProxyError {
             fn from(error: $error) -> Self {
                 Self::from_source(stringify!($error), error)
             }

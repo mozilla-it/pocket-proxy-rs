@@ -14,7 +14,7 @@ pub mod utils;
 use crate::{
     adzerk::client::AdzerkClient,
     endpoints::{debug, delete_user, dockerflow, EndpointState},
-    errors::ClassifyError,
+    errors::ProxyError,
     geoip::GeoIp,
     settings::Settings,
 };
@@ -25,10 +25,10 @@ use actix_web::{
 
 use std::sync::Arc;
 
-const APP_NAME: &str = "classify-client";
+const APP_NAME: &str = "pocket-proxy";
 
 #[actix_web::main]
-async fn main() -> Result<(), ClassifyError> {
+async fn main() -> Result<(), ProxyError> {
     let Settings {
         debug,
         geoip_db_path,

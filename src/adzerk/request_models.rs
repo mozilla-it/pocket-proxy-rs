@@ -26,10 +26,7 @@ impl Default for Placement {
 }
 
 impl Placement {
-    pub fn from_spoc_placement(
-        placement: spocs::Placement,
-        site: Option<u32>,
-    ) -> Self {
+    pub fn from_spoc_placement(placement: spocs::Placement, site: Option<u32>) -> Self {
         let mut result = Placement::default();
         if !placement.ad_types.is_empty() {
             result.ad_types = placement.ad_types;
@@ -102,7 +99,7 @@ pub struct DecisionResponse {}
 #[cfg(test)]
 mod tests {
     use super::DecisionRequest;
-    use crate::{endpoints::spocs::SpocsRequest, adzerk::defaults};
+    use crate::{adzerk::defaults, endpoints::spocs::SpocsRequest};
     use serde_json::{from_value, json, to_value};
 
     #[test]
@@ -152,8 +149,7 @@ mod tests {
             },
             "keywords": ["US", "US-IL"]
         });
-        let actual_decision_request =
-            to_value(DecisionRequest::from(spoc_request)).unwrap();
+        let actual_decision_request = to_value(DecisionRequest::from(spoc_request)).unwrap();
         assert_eq!(actual_decision_request, expected_decision_request);
     }
 }

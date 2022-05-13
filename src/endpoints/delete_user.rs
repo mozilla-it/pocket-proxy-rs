@@ -1,4 +1,4 @@
-use crate::{adzerk::client::AdzerkClient, errors::ClassifyError};
+use crate::{adzerk::client::AdzerkClient, errors::ProxyError};
 use actix_web::{
     web::{self, Data},
     HttpResponse,
@@ -18,7 +18,7 @@ pub struct DeleteUserResponse {
 pub async fn delete_user(
     user: web::Json<User>,
     adzerk_client: Data<AdzerkClient>,
-) -> Result<HttpResponse, ClassifyError> {
+) -> Result<HttpResponse, ProxyError> {
     let status = adzerk_client.delete_user(&user.pocket_id).await?;
     let response_body = DeleteUserResponse {
         status: (status == 200) as _,

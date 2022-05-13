@@ -20,7 +20,7 @@ RUN groupadd --gid 10001 app && \
 
 WORKDIR /app
 
-COPY --from=build /app/target/release/classify-client .
+COPY --from=build /app/target/release/pocket-proxy .
 COPY --from=build /app/GeoLite2-Country.mmdb ./
 COPY --from=build /app/version.json ./
 
@@ -29,4 +29,4 @@ ENV PORT=8000
 ENV HOST=0.0.0.0
 EXPOSE $PORT
 
-CMD ["/app/classify-client"]
+CMD ["/app/pocket-proxy"]

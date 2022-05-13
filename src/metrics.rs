@@ -1,4 +1,4 @@
-use crate::{endpoints::EndpointState, errors::ClassifyError, APP_NAME};
+use crate::{endpoints::EndpointState, errors::ProxyError, APP_NAME};
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     web::Data,
@@ -13,7 +13,7 @@ use std::{
     time::Instant,
 };
 
-pub fn get_client<A>(metrics_target: A, log: slog::Logger) -> Result<StatsdClient, ClassifyError>
+pub fn get_client<A>(metrics_target: A, log: slog::Logger) -> Result<StatsdClient, ProxyError>
 where
     A: ToSocketAddrs + Display,
 {

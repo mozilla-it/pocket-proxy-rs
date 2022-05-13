@@ -1,4 +1,4 @@
-use crate::errors::ClassifyError;
+use crate::errors::ProxyError;
 use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -73,7 +73,7 @@ impl Default for Settings {
 
 impl Settings {
     /// Load settings from the environment.
-    pub fn load() -> Result<Self, ClassifyError> {
+    pub fn load() -> Result<Self, ProxyError> {
         let settings: Self = envy::from_env()?;
         Ok(settings)
     }
@@ -90,10 +90,7 @@ mod tests {
         let settings = Settings::default();
 
         assert!(!settings.debug);
-        assert_eq!(
-            settings.geoip_db_path.to_str(),
-            Some("./GeoIP2-City.mmdb")
-        );
+        assert_eq!(settings.geoip_db_path.to_str(), Some("./GeoIP2-City.mmdb"));
         assert_eq!(settings.host, "[::]");
         assert_eq!(settings.port, 8000);
         assert_eq!(settings.trusted_proxy_list, Vec::new());

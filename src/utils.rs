@@ -1,4 +1,4 @@
-use crate::{endpoints::EndpointState, errors::ClassifyError};
+use crate::{endpoints::EndpointState, errors::ProxyError};
 use actix_web::{web::Data, HttpRequest};
 use std::net::IpAddr;
 
@@ -8,7 +8,7 @@ pub trait RequestClientIp<S> {
     ///
     /// Actix has a method to do this, but it returns a string, and doesn't strip
     /// off ports if present, so it is difficult to use.
-    fn client_ip(&self) -> Result<IpAddr, ClassifyError>;
+    fn client_ip(&self) -> Result<IpAddr, ProxyError>;
 }
 
 pub trait RequestTraceIps<'a> {
@@ -18,7 +18,7 @@ pub trait RequestTraceIps<'a> {
 }
 
 impl RequestClientIp<EndpointState> for HttpRequest {
-    fn client_ip(&self) -> Result<IpAddr, ClassifyError> {
+    fn client_ip(&self) -> Result<IpAddr, ProxyError> {
         let trusted_proxy_list = &self
             .app_data::<Data<EndpointState>>()
             .expect("Expected app state")
@@ -30,7 +30,7 @@ impl RequestClientIp<EndpointState> for HttpRequest {
         self.trace_ips()
             .iter()
             .find(|ip| !is_trusted_ip(ip))
-            .ok_or_else(|| ClassifyError::new("Could not determine IP"))
+            .ok_or_else(|| ProxyError::new("Could not determine IP"))
             .map(|ip| *ip)
     }
 }
@@ -86,7 +86,6 @@ mod tests {
 
     #[test]
     fn get_client_ip_no_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new();
         let state = EndpointState::default();
         assert_eq!(
             state.trusted_proxies.len(),
@@ -110,7 +109,6 @@ mod tests {
 
     #[test]
     fn get_client_ip_one_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new();
         let state = EndpointState {
             trusted_proxies: vec!["5.6.7.8/32".parse()?],
             ..EndpointState::default()
@@ -132,7 +130,6 @@ mod tests {
 
     #[test]
     fn get_client_ip_too_many_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new();
         let state = EndpointState {
             trusted_proxies: vec!["5.6.7.8/32".parse()?, "1.2.3.4/32".parse()?],
             ..EndpointState::default()

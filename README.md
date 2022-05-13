@@ -1,6 +1,8 @@
-# Classify Client
+# Pocket Proxy server (Rust version)
 
-This is an optimized version of the classify client endpoint in [Normandy](https://github.com/mozilla/normandy).
+This is an reimplementation of the [original Pocket proxy server](https://github.com/Pocket/proxy-server) in Rust. The proxy server delivers sponsored content obtained from the Kevel API (formerly Adzerk), while preserving the privacy of Firefox users.
+
+The code of https://github.com/mozilla/classify-client was used as a starting point of this implementation.
 
 ## Dev instructions
 
@@ -15,8 +17,7 @@ This project should run on the latest stable version of Rust. Unstable features 
 
 ### GeoIP Database
 
-A GeoIP database will need to be provided. By default it is expected to be
-found at `./GeoLite2-Country.mmdb`.
+A GeoIP database will need to be provided. By default it is expected to be found at `./GeoIP2-City.mmdb`.
 
 ## Configuration
 
@@ -24,7 +25,7 @@ Via environment variables:
 
 - `DEBUG`: Set to `"true"` to enable extra debugging options, such as a `/debug`
     endpoint that shows internal server state (default: `"false"`).
-- `GEOIP_DB_PATH`: path to GeoIP database (default: `"./GeoLite2-Country.mmdb"`)
+- `GEOIP_DB_PATH`: path to GeoIP database (default: `"./GeoIP2-City.mmdb"`)
 - `HOST`: host to bind to (default: `"localhost"`)
 - `HUMAN_LOGS`: set to `"true"` to use human readable logging (default: MozLog as JSON)
 - `METRICS_TARGET`: The host and port to send statsd metrics to. May be a

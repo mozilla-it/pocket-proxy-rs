@@ -7,7 +7,6 @@ pub const NETWORK_ID: u32 = 10250;
 
 lazy_static! {
     pub static ref BASE_URL: String = format!("https://e-{0}.adzerk.net", NETWORK_ID);
-
     pub static ref PLACEMENT: Placement = Placement {
         div_name: "spocs".to_owned(),
         network_id: NETWORK_ID,
@@ -17,7 +16,6 @@ lazy_static! {
         count: 10,
         event_ids: [17, 20],
     };
-
     pub static ref CAPS: Value = json!({
         "lifetime": 50,
         "campaign": {
@@ -29,18 +27,16 @@ lazy_static! {
             "period": 86400,
         },
     });
-
     pub static ref SETTINGS: Value = from_str(include_str!("settings.json")).unwrap();
-
     pub static ref DOMAIN_AFFINITIES: HashMap<String, HashMap<String, u32>> =
         from_str(include_str!("domain_affinities.json")).unwrap();
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use super::{DOMAIN_AFFINITIES, SETTINGS};
     use serde_json::Value;
-    use super::{SETTINGS, DOMAIN_AFFINITIES};
+    use std::collections::HashMap;
 
     #[test]
     fn test_parse_json_files() {

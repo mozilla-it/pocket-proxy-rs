@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{adzerk::client::AdzerkClient, errors::ClassifyError, utils::RequestClientIp};
+use crate::{adzerk::client::AdzerkClient, errors::ProxyError, utils::RequestClientIp};
 use actix_web::{
     web::{self, Data},
     HttpRequest, HttpResponse,
@@ -79,7 +79,7 @@ pub async fn spocs(
     state: Data<EndpointState>,
     adzerk_client: Data<AdzerkClient>,
     req: HttpRequest,
-) -> Result<HttpResponse, ClassifyError> {
+) -> Result<HttpResponse, ProxyError> {
     // validate pocket id is a uuid
     let _: uuid::Uuid = spoc.pocket_id.parse()?;
 

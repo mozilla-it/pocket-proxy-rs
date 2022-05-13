@@ -5,10 +5,13 @@ use awc::Client;
 
 use crate::{
     endpoints::spocs::{SpocsRequest, SpocsResponse},
-    errors::ClassifyError,
+    errors::ProxyError,
 };
 
-use super::{request_models::{UserKey, DecisionRequest}, defaults};
+use super::{
+    defaults,
+    request_models::{DecisionRequest, UserKey},
+};
 
 pub struct AdzerkClient {
     http_client: Client,
@@ -32,7 +35,7 @@ impl AdzerkClient {
         self
     }
 
-    pub async fn delete_user(&self, pocket_id: &str) -> Result<StatusCode, ClassifyError> {
+    pub async fn delete_user(&self, pocket_id: &str) -> Result<StatusCode, ProxyError> {
         let user_key = UserKey {
             user_key: pocket_id,
         };
@@ -48,7 +51,7 @@ impl AdzerkClient {
         Ok(status)
     }
 
-    pub async fn get_decisions(&self, spoc: SpocsRequest) -> Result<SpocsResponse, ClassifyError> {
+    pub async fn get_decisions(&self, spoc: SpocsRequest) -> Result<SpocsResponse, ProxyError> {
         let decision_request = DecisionRequest::from(spoc);
         let status = self
             .http_client
@@ -63,7 +66,6 @@ impl AdzerkClient {
         }
 
         // TODO: transform.py decisions
-
 
         todo!()
     }
