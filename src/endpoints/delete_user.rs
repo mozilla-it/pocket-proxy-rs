@@ -54,7 +54,7 @@ mod tests {
         let adzerk_client =
             AdzerkClient::new(adzerk_api_key.into()).with_base_url(mock_adzerk_server.uri());
 
-        let mut service = test::init_service(
+        let service = test::init_service(
             App::new()
                 .app_data(Data::new(adzerk_client))
                 .route("/user", web::delete().to(super::delete_user)),
@@ -65,7 +65,7 @@ mod tests {
             .uri("/user")
             .set_json(json!({"pocket_id": "{123}"}))
             .to_request();
-        let response: Value = test::call_and_read_body_json(&mut service, request).await;
+        let response: Value = test::call_and_read_body_json(&service, request).await;
         assert_eq!(response, json!({"status": 1}));
         // TODO: assert_eq!(request.status(), 200);
 

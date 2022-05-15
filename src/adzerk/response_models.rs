@@ -1,5 +1,6 @@
+use super::defaults;
 use crate::{
-    endpoints::spocs::{Spoc, SpocsResponse},
+    endpoints::spocs::{Collection, Spoc, SpocsList, SpocsResponse},
     errors::ProxyError,
 };
 use actix_web::{http::Uri, web::Query};
@@ -61,12 +62,53 @@ pub struct Event {
     pub url: String,
 }
 
-impl TryFrom<DecisionResponse> for SpocsResponse {
-    type Error = ProxyError;
-
-    fn try_from(decision_response: DecisionResponse) -> Result<Self, Self::Error> {
-        todo!()
+impl SpocsResponse {
+    pub fn from_decision_response(
+        decision_response: DecisionResponse,
+        version: u32,
+    ) -> Result<Self, ProxyError> {
+        let divs = decision_response
+            .decisions
+            .into_iter()
+            .map(|(div, decisions)| {
+                let spocs: Result<Vec<_>, ProxyError> =
+                    decisions.into_iter().map(TryInto::try_into).collect();
+                let spoc_list = SpocsList::from_spocs(spocs?, version);
+                Ok((div, spoc_list))
+            })
+            .collect::<Result<_, ProxyError>>()?;
+        Ok(SpocsResponse {
+            settings: &defaults::SETTINGS,
+            divs,
+        })
     }
+}
+
+impl SpocsList {
+    fn from_spocs(mut spocs: Vec<Spoc>, version: u32) -> Self {
+        if version >= 2 && !spocs.is_empty() && spocs.iter().all(|s| s.collection_title.is_some()) {
+            for spoc in spocs.iter_mut() {
+                spoc.collection_title = None;
+            }
+            let spoc = &spocs[0];
+            let collection = Collection {
+                title: spoc.collection_title.clone().unwrap(),
+                flight_id: spoc.flight_id,
+                sponsor: spoc.sponsor.clone(),
+                context: format_context(spoc.sponsor.as_deref()),
+                items: spocs,
+            };
+            SpocsList::Collection(collection)
+        } else {
+            SpocsList::Standard(spocs)
+        }
+    }
+}
+
+fn format_context(sponsor: Option<&str>) -> String {
+    sponsor
+        .map(|s| format!("Sponsored by {}", s))
+        .unwrap_or_default()
 }
 
 impl TryFrom<Decision> for Spoc {

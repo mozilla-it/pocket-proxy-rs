@@ -36,7 +36,24 @@ pub struct Placement {
 #[derive(Serialize)]
 pub struct SpocsResponse {
     pub settings: &'static serde_json::Value,
-    pub spocs: Vec<Spoc>,
+    #[serde(flatten)]
+    pub divs: HashMap<String, SpocsList>,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum SpocsList {
+    Standard(Vec<Spoc>),
+    Collection(Collection),
+}
+
+#[derive(Serialize)]
+pub struct Collection {
+    pub title: String,
+    pub flight_id: u32,
+    pub sponsor: Option<String>,
+    pub context: String,
+    pub items: Vec<Spoc>,
 }
 
 #[derive(Serialize)]

@@ -52,14 +52,17 @@ impl AdzerkClient {
         Ok(status)
     }
 
-    pub async fn get_decisions(&self, spoc: SpocsRequest) -> Result<SpocsResponse, ProxyError> {
-        let decision_request = DecisionRequest::from(spoc);
+    pub async fn get_decisions(
+        &self,
+        spocs_request: SpocsRequest,
+    ) -> Result<SpocsResponse, ProxyError> {
+        let version = spocs_request.version;
+        let decision_request = DecisionRequest::from(spocs_request);
         let mut http_response = self
             .http_client
             .post(format!("{}/api/v2", self.base_url))
             .send_json(&decision_request)
             .await?;
-
         let decision_response = if http_response.status().as_u16() == 400 {
             let _body = String::from_utf8_lossy(http_response.body().await?.as_ref());
             // TODO: log error
@@ -69,6 +72,6 @@ impl AdzerkClient {
         } else {
             http_response.json::<DecisionResponse>().await?
         };
-        decision_response.try_into()
+        SpocsResponse::from_decision_response(decision_response, version)
     }
 }
