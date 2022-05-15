@@ -1,5 +1,5 @@
 use crate::endpoints::spocs::{self, SpocsRequest};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct UserKey<'a> {
@@ -91,10 +91,6 @@ impl From<SpocsRequest> for DecisionRequest {
         }
     }
 }
-
-// AdZerk Output Type
-#[derive(Deserialize)]
-pub struct DecisionResponse {}
 
 #[cfg(test)]
 mod tests {

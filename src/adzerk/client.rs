@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use actix_web::http::StatusCode;
 use awc::Client;
@@ -11,6 +11,7 @@ use crate::{
 use super::{
     defaults,
     request_models::{DecisionRequest, UserKey},
+    response_models::DecisionResponse,
 };
 
 pub struct AdzerkClient {
@@ -53,20 +54,21 @@ impl AdzerkClient {
 
     pub async fn get_decisions(&self, spoc: SpocsRequest) -> Result<SpocsResponse, ProxyError> {
         let decision_request = DecisionRequest::from(spoc);
-        let status = self
+        let mut http_response = self
             .http_client
             .post(format!("{}/api/v2", self.base_url))
             .send_json(&decision_request)
             .await?;
 
-        // TODO: Return something to the client
-        // if status is "bad"
-        if status.status().as_u16() == 400 {
-            // idk
-        }
-
-        // TODO: transform.py decisions
-
-        todo!()
+        let decision_response = if http_response.status().as_u16() == 400 {
+            let _body = String::from_utf8_lossy(http_response.body().await?.as_ref());
+            // TODO: log error
+            DecisionResponse {
+                decisions: HashMap::new(),
+            }
+        } else {
+            http_response.json::<DecisionResponse>().await?
+        };
+        decision_response.try_into()
     }
 }
