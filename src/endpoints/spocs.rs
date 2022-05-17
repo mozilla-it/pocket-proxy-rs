@@ -70,7 +70,7 @@ pub struct Spoc {
     pub raw_image_src: String,
     pub image_src: String,
     pub shim: Shim,
-    pub parameter_set: String,
+    pub parameter_set: &'static str,
     pub caps: &'static serde_json::Value,
     pub domain_affinities: &'static HashMap<String, u32>,
     pub personalization_models: HashMap<String, u32>,
@@ -101,15 +101,13 @@ pub async fn spocs(
     let _: uuid::Uuid = spoc.pocket_id.parse()?;
 
     if spoc.country.is_none() {
-        let location = state.geoip.locate(req.client_ip()?)?;
-
-        spoc.country = location.country.map(|s| s.to_owned());
-        spoc.region = location.region.map(|s| s.to_owned());
+        if let Ok(location) = state.geoip.locate(req.client_ip()?) {
+            spoc.country = location.country.map(|s| s.to_owned());
+            spoc.region = location.region.map(|s| s.to_owned());
+        }
     }
 
-    let decisions = adzerk_client.get_decisions(spoc.into_inner());
+    let spocs_response = adzerk_client.get_decisions(spoc.into_inner()).await?;
 
-    // let status = adzerk_client.delete_user(&user.pocket_id).await?;
-    // Ok(HttpResponse::build(status).json(json!({"status": (status == 200) as i32})))
-    todo!()
+    Ok(HttpResponse::Ok().json(spocs_response))
 }

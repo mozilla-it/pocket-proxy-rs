@@ -5,6 +5,8 @@ use std::collections::HashMap;
 
 pub const NETWORK_ID: u32 = 10250;
 
+pub const PRIORITY: u32 = 100;
+
 lazy_static! {
     pub static ref BASE_URL: String = format!("https://e-{0}.adzerk.net", NETWORK_ID);
     pub static ref PLACEMENT: Placement = Placement {
@@ -30,6 +32,7 @@ lazy_static! {
     pub static ref SETTINGS: Value = from_str(include_str!("settings.json")).unwrap();
     pub static ref DOMAIN_AFFINITIES: HashMap<String, HashMap<String, u32>> =
         from_str(include_str!("domain_affinities.json")).unwrap();
+    pub static ref EMPTY_DOMAIN_AFFINITIES: HashMap<String, u32> = HashMap::new();
 }
 
 #[cfg(test)]

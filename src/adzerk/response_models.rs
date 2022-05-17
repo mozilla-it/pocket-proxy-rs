@@ -1,9 +1,11 @@
 use super::defaults;
 use crate::{
-    endpoints::spocs::{Collection, Spoc, SpocsList, SpocsResponse},
+    endpoints::spocs::{Collection, Shim, Spoc, SpocsList, SpocsResponse},
     errors::ProxyError,
 };
 use actix_web::{http::Uri, web::Query};
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -50,10 +52,12 @@ pub struct Data {
     pub ct_item_score: Option<f64>,
     #[serde(rename(deserialize = "ctDomain_affinities"))]
     pub ct_domain_affinities: String,
+    pub ct_cta: Option<String>,
     pub ct_collection_title: Option<String>,
     pub ct_is_video: Option<String>,
     pub ct_image: Option<String>,
     pub file_name: Option<String>,
+    pub ct_sponsored_by_override: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -117,17 +121,141 @@ impl TryFrom<Decision> for Spoc {
     fn try_from(decision: Decision) -> Result<Self, Self::Error> {
         let [contents] = decision.contents;
         let custom_data = contents.data;
-        let body: Option<HashMap<String, Value>> = contents
-            .body
-            .map(|body| serde_json::from_str(&body))
-            .transpose()?;
-        let event_map: HashMap<u32, String> = decision
-            .events
+        let mut events_map = EventsMap::new(decision.events)?;
+        let spoc = Spoc {
+            id: decision.ad_id,
+            flight_id: decision.flight_id,
+            campaign_id: decision.campaign_id,
+            title: custom_data.ct_title,
+            url: custom_data.ct_url,
+            domain: custom_data.ct_domain,
+            excerpt: custom_data.ct_excerpt,
+            priority: map_priority(decision.priority_id),
+            context: format_context(custom_data.ct_sponsor.as_deref()),
+            image_src: get_cdn_image(&custom_data.ct_fullimagepath)?,
+            raw_image_src: custom_data.ct_fullimagepath,
+            shim: Shim {
+                click: tracking_url_to_shim(decision.click_url)?,
+                impression: tracking_url_to_shim(decision.impression_url)?,
+                delete: events_map.remove(17)?,
+                save: events_map.remove(20)?,
+            },
+            parameter_set: "default",
+            caps: &defaults::CAPS,
+            domain_affinities: get_domain_affinities(custom_data.ct_domain_affinities),
+            personalization_models: get_personalization_models(contents.body)?,
+            min_score: custom_data.ct_min_score.unwrap_or(0.1),
+            item_score: custom_data.ct_item_score.unwrap_or(0.2),
+            cta: custom_data.ct_cta,
+            collection_title: custom_data.ct_collection_title,
+            sponsor: custom_data.ct_sponsor,
+            sponsored_by_override: custom_data
+                .ct_sponsored_by_override
+                .map(clean_sponsored_by_override),
+            is_video: get_is_video(custom_data.ct_is_video),
+        };
+        Ok(spoc)
+    }
+}
+
+struct EventsMap {
+    map: HashMap<u32, String>,
+}
+
+impl EventsMap {
+    fn new(events: Vec<Event>) -> Result<Self, ProxyError> {
+        let map = events
             .into_iter()
             .map(|event| Ok((event.id, tracking_url_to_shim(event.url)?)))
             .collect::<Result<_, ProxyError>>()?;
-        todo!()
+        Ok(Self { map })
     }
+
+    fn remove(&mut self, event_id: u32) -> Result<String, ProxyError> {
+        self.map
+            .remove(&event_id)
+            .ok_or_else(|| ProxyError::new("invalid event i"))
+    }
+}
+
+fn map_priority(priority_id: Option<u32>) -> u32 {
+    priority_id
+        .map(|priority_id| match priority_id {
+            147517 => 1,
+            180843 => 2,
+            147518 => 3,
+            160722 => 9,
+            147520 => 10,
+            _ => defaults::PRIORITY,
+        })
+        .unwrap_or(defaults::PRIORITY)
+}
+
+fn get_cdn_image(full_image_path: &str) -> Result<String, ProxyError> {
+    let full_image_url: Uri = full_image_path.parse()?;
+    let domain_name = full_image_url.host();
+    if domain_name.is_none() || !domain_name.unwrap().ends_with("zkcdn.net") {
+        return Err(ProxyError::new(format!(
+            "Invalid AdZerk image url: {}",
+            full_image_path
+        )));
+    }
+    let escaped = serde_urlencoded::to_string(full_image_path).unwrap();
+    Ok(format!(
+        "https://img-getpocket.cdn.mozilla.net/direct?url={0}&resize=w618-h310",
+        escaped
+    ))
+}
+
+fn get_domain_affinities(name: String) -> &'static HashMap<String, u32> {
+    defaults::DOMAIN_AFFINITIES
+        .get(&name)
+        .unwrap_or(&defaults::EMPTY_DOMAIN_AFFINITIES)
+}
+
+fn get_personalization_models(body: Option<String>) -> Result<HashMap<String, u32>, ProxyError> {
+    match body {
+        None => Ok(HashMap::new()),
+        Some(body) => {
+            let map: HashMap<String, Value> = serde_json::from_str(&body)?;
+            let result: HashMap<String, u32> = map
+                .into_iter()
+                .filter_map(|(topic, flag)| {
+                    topic.strip_prefix("topic_").and_then(|topic| {
+                        if flag == Value::Bool(true)
+                            || flag.is_string() && flag.as_str().unwrap() == "true"
+                        {
+                            Some((topic.to_owned(), 1))
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect();
+            Ok(result)
+        }
+    }
+}
+
+fn clean_sponsored_by_override(mut sponsored_by_override: String) -> String {
+    lazy_static! {
+        static ref REGEX: Regex = Regex::new(r"^\s*(blank|empty)\s*$").unwrap();
+    }
+    if REGEX.is_match(&sponsored_by_override) {
+        sponsored_by_override.clear();
+    }
+    sponsored_by_override
+}
+
+fn get_is_video(is_video: Option<String>) -> Option<bool> {
+    is_video.and_then(|mut is_video| {
+        is_video.make_ascii_lowercase();
+        match is_video.as_str() {
+            "y" | "yes" | "t" | "true" | "on" | "1" => Some(true),
+            "n" | "no" | "f" | "false" | "off" | "0" => Some(false),
+            _ => None,
+        }
+    })
 }
 
 #[derive(Deserialize)]

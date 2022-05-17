@@ -13,7 +13,7 @@ pub mod utils;
 
 use crate::{
     adzerk::client::AdzerkClient,
-    endpoints::{debug, delete_user, dockerflow, EndpointState},
+    endpoints::{debug, delete_user, dockerflow, spocs, EndpointState},
     errors::ProxyError,
     geoip::GeoIp,
     settings::Settings,
@@ -73,6 +73,7 @@ async fn main() -> Result<(), ProxyError> {
             .wrap(metrics::ResponseTimer)
             .wrap(logging::RequestLogger)
             // API Endpoints
+            .service(web::resource("/spocs").route(web::post().to(spocs::spocs)))
             .service(web::resource("/user").route(web::delete().to(delete_user::delete_user)))
             // Dockerflow Endpoints
             .service(
