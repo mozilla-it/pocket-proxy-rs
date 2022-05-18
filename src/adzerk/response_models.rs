@@ -147,14 +147,8 @@ impl TryFrom<Decision> for Spoc {
             caps: &defaults::CAPS,
             domain_affinities: get_domain_affinities(custom_data.ct_domain_affinities),
             personalization_models: get_personalization_models(contents.body)?,
-            min_score: custom_data
-                .ct_min_score
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0.1),
-            item_score: custom_data
-                .ct_item_score
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0.2),
+            min_score: get_score(custom_data.ct_min_score, 0.1),
+            item_score: get_score(custom_data.ct_item_score, 0.2),
             cta: custom_data.ct_cta,
             collection_title: custom_data.ct_collection_title,
             sponsor: custom_data.ct_sponsor,
@@ -185,6 +179,10 @@ impl EventsMap {
             .remove(&event_id)
             .ok_or_else(|| ProxyError::new("invalid event i"))
     }
+}
+
+fn get_score(score: Option<String>, default: f64) -> f64 {
+    score.and_then(|s| s.parse().ok()).unwrap_or(default)
 }
 
 fn map_priority(priority_id: Option<u32>) -> u32 {
