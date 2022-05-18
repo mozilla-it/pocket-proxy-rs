@@ -195,20 +195,20 @@ fn map_priority(priority_id: Option<u32>) -> u32 {
 }
 
 fn get_cdn_image(full_image_path: &str) -> Result<String, ProxyError> {
-    let full_image_url: Uri = full_image_path.parse()?;
-    let domain_name = full_image_url.host();
-    if domain_name.is_none() || !domain_name.unwrap().ends_with("zkcdn.net") {
-        return Err(ProxyError::new(format!(
+    match full_image_path.parse::<Uri>()?.host() {
+        Some(domain) if domain.ends_with(".zkcdn.net") || domain == "zkcdn.net" => {
+            let mut result = "https://img-getpocket.cdn.mozilla.net/direct?".to_owned();
+            form_urlencoded::Serializer::new(&mut result)
+                .append_pair("url", full_image_path)
+                .append_pair("resize", "w618-h310")
+                .finish();
+            Ok(result)
+        }
+        _ => Err(ProxyError::new(format!(
             "Invalid AdZerk image url: {}",
             full_image_path
-        )));
+        ))),
     }
-    let mut result = "https://img-getpocket.cdn.mozilla.net/direct?".to_owned();
-    form_urlencoded::Serializer::new(&mut result)
-        .append_pair("url", full_image_path)
-        .append_pair("resize", "w618-h310")
-        .finish();
-    Ok(result)
 }
 
 fn get_domain_affinities(name: Option<String>) -> &'static HashMap<String, u32> {
