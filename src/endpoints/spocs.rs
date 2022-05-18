@@ -51,6 +51,7 @@ pub enum SpocsList {
 pub struct Collection {
     pub title: String,
     pub flight_id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sponsor: Option<String>,
     pub context: String,
     pub items: Vec<Spoc>,
@@ -76,10 +77,15 @@ pub struct Spoc {
     pub personalization_models: HashMap<String, u32>,
     pub min_score: f64,
     pub item_score: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cta: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub collection_title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sponsor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sponsored_by_override: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_video: Option<bool>,
 }
 
