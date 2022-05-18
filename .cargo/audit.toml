@@ -3,7 +3,7 @@
 
 [advisories]
 ignore = [
-    # term is looking for a new maintainer, not a directy securit problem
+    # term is looking for a new maintainer, not a direct security problem
     "RUSTSEC-2018-0015",
 
     # chrono has a rare data race that could theoretically lead to a segfault when a different
