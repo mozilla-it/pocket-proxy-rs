@@ -242,7 +242,7 @@ fn get_personalization_models(body: Option<String>) -> Result<HashMap<String, u3
 
 fn clean_sponsored_by_override(mut sponsored_by_override: String) -> String {
     lazy_static! {
-        static ref REGEX: Regex = Regex::new(r"^\s*(blank|empty)\s*$").unwrap();
+        static ref REGEX: Regex = Regex::new(r"(?i)^\s*(blank|empty)\s*$").unwrap();
     }
     if REGEX.is_match(&sponsored_by_override) {
         sponsored_by_override.clear();
