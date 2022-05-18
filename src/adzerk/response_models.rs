@@ -223,22 +223,18 @@ fn get_domain_affinities(name: Option<String>) -> &'static HashMap<String, u32> 
 }
 
 fn get_personalization_models(body: Option<String>) -> Result<HashMap<String, u32>, ProxyError> {
+    lazy_static! {
+        static ref TRUE_VALUES: [Value; 2] = [Value::from(true), Value::from("true")];
+    }
     match body {
         None => Ok(HashMap::new()),
         Some(body) => {
             let map: HashMap<String, Value> = serde_json::from_str(&body)?;
             let result: HashMap<String, u32> = map
                 .into_iter()
-                .filter_map(|(topic, flag)| {
-                    topic.strip_prefix("topic_").and_then(|topic| {
-                        if flag == Value::Bool(true)
-                            || flag.is_string() && flag.as_str().unwrap() == "true"
-                        {
-                            Some((topic.to_owned(), 1))
-                        } else {
-                            None
-                        }
-                    })
+                .filter_map(|(topic, flag)| match topic.strip_prefix("topic_") {
+                    Some(topic) if TRUE_VALUES.contains(&flag) => Some((topic.to_owned(), 1)),
+                    _ => None,
                 })
                 .collect();
             Ok(result)
