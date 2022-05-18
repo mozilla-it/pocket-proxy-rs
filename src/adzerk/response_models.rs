@@ -94,12 +94,12 @@ impl SpocsResponse {
 impl SpocsList {
     fn from_spocs(mut spocs: Vec<Spoc>, version: u32) -> Self {
         if version >= 2 && !spocs.is_empty() && spocs.iter().all(|s| s.collection_title.is_some()) {
-            for spoc in spocs.iter_mut() {
+            for spoc in spocs.iter_mut().skip(1) {
                 spoc.collection_title = None;
             }
-            let spoc = &spocs[0];
+            let spoc = &mut spocs[0];
             let collection = Collection {
-                title: spoc.collection_title.clone().unwrap(),
+                title: spoc.collection_title.take().unwrap(),
                 flight_id: spoc.flight_id,
                 sponsor: spoc.sponsor.clone(),
                 context: format_context(spoc.sponsor.as_deref()),
