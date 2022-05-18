@@ -1,5 +1,5 @@
-use crate::{endpoints::EndpointState, errors::ClassifyError};
-use actix_web::HttpRequest;
+use crate::{endpoints::EndpointState, errors::ProxyError};
+use actix_web::{web::Data, HttpRequest};
 use std::net::IpAddr;
 
 pub trait RequestClientIp<S> {
@@ -8,7 +8,7 @@ pub trait RequestClientIp<S> {
     ///
     /// Actix has a method to do this, but it returns a string, and doesn't strip
     /// off ports if present, so it is difficult to use.
-    fn client_ip(&self) -> Result<IpAddr, ClassifyError>;
+    fn client_ip(&self) -> Result<IpAddr, ProxyError>;
 }
 
 pub trait RequestTraceIps<'a> {
@@ -18,9 +18,9 @@ pub trait RequestTraceIps<'a> {
 }
 
 impl RequestClientIp<EndpointState> for HttpRequest {
-    fn client_ip(&self) -> Result<IpAddr, ClassifyError> {
+    fn client_ip(&self) -> Result<IpAddr, ProxyError> {
         let trusted_proxy_list = &self
-            .app_data::<EndpointState>()
+            .app_data::<Data<EndpointState>>()
             .expect("Expected app state")
             .trusted_proxies;
 
@@ -30,7 +30,7 @@ impl RequestClientIp<EndpointState> for HttpRequest {
         self.trace_ips()
             .iter()
             .find(|ip| !is_trusted_ip(ip))
-            .ok_or_else(|| ClassifyError::new("Could not determine IP"))
+            .ok_or_else(|| ProxyError::new("Could not determine IP"))
             .map(|ip| *ip)
     }
 }
@@ -64,7 +64,8 @@ mod tests {
 
     #[test]
     fn trace_ip_works() {
-        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8, 9.10.11.12")
+        let req = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8, 9.10.11.12"))
             .to_http_request();
         assert_eq!(
             req.trace_ips(),
@@ -85,7 +86,6 @@ mod tests {
 
     #[test]
     fn get_client_ip_no_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new();
         let state = EndpointState::default();
         assert_eq!(
             state.trusted_proxies.len(),
@@ -93,8 +93,9 @@ mod tests {
             "Precondition: no trusted proxies by default"
         );
 
-        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .app_data(state)
+        let req = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
+            .app_data(Data::new(state))
             .to_http_request();
 
         assert_eq!(
@@ -108,14 +109,14 @@ mod tests {
 
     #[test]
     fn get_client_ip_one_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new();
         let state = EndpointState {
             trusted_proxies: vec!["5.6.7.8/32".parse()?],
             ..EndpointState::default()
         };
 
-        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .app_data(state)
+        let req = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
+            .app_data(Data::new(state))
             .to_http_request();
 
         assert_eq!(
@@ -129,14 +130,14 @@ mod tests {
 
     #[test]
     fn get_client_ip_too_many_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let _sys = actix::System::new();
         let state = EndpointState {
             trusted_proxies: vec!["5.6.7.8/32".parse()?, "1.2.3.4/32".parse()?],
             ..EndpointState::default()
         };
 
-        let req = TestRequest::with_header("x-forwarded-for", "1.2.3.4, 5.6.7.8")
-            .app_data(state)
+        let req = TestRequest::get()
+            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
+            .app_data(Data::new(state))
             .to_http_request();
 
         assert!(

@@ -1,10 +1,11 @@
-use crate::{endpoints::EndpointState, errors::ClassifyError, APP_NAME};
+use crate::{endpoints::EndpointState, errors::ProxyError, APP_NAME};
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
+    web::Data,
     Error,
 };
 use cadence::{prelude::*, BufferedUdpMetricSink, StatsdClient};
-use futures::{future, task, Future, FutureExt};
+use futures::{future, Future, FutureExt};
 use std::{
     fmt::Display,
     net::{ToSocketAddrs, UdpSocket},
@@ -12,7 +13,7 @@ use std::{
     time::Instant,
 };
 
-pub fn get_client<A>(metrics_target: A, log: slog::Logger) -> Result<StatsdClient, ClassifyError>
+pub fn get_client<A>(metrics_target: A, log: slog::Logger) -> Result<StatsdClient, ProxyError>
 where
     A: ToSocketAddrs + Display,
 {
@@ -47,13 +48,12 @@ where
 
 pub struct ResponseTimer;
 
-impl<S, B> Transform<S> for ResponseTimer
+impl<S, B> Transform<S, ServiceRequest> for ResponseTimer
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
     type InitError = ();
@@ -69,24 +69,21 @@ pub struct ResponseTimerMiddleware<S> {
     service: S,
 }
 
-impl<S, B> Service for ResponseTimerMiddleware<S>
+impl<S, B> Service<ServiceRequest> for ResponseTimerMiddleware<S>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
-    #[allow(clippy::clippy::type_complexity)]
+    #[allow(clippy::type_complexity)]
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
-    fn poll_ready(&mut self, ctx: &mut task::Context<'_>) -> task::Poll<Result<(), Self::Error>> {
-        self.service.poll_ready(ctx)
-    }
+    actix_web::dev::forward_ready!(service);
 
-    fn call(&mut self, req: ServiceRequest) -> Self::Future {
-        let metrics = match req.app_data::<EndpointState>() {
+    fn call(&self, req: ServiceRequest) -> Self::Future {
+        let metrics = match req.app_data::<Data<EndpointState>>() {
             Some(state) => state.metrics.clone(),
             None => return Box::pin(self.service.call(req)),
         };
@@ -98,7 +95,7 @@ where
             Ok(val) => {
                 let duration = started.elapsed();
                 metrics
-                    .time_duration_with_tags("response", duration)
+                    .time_with_tags("response", duration)
                     .with_tag(
                         "status",
                         if val.status().is_success() {
@@ -122,7 +119,8 @@ pub mod tests {
     use crate::endpoints::EndpointState;
     use actix_web::{
         test::{self, TestRequest},
-        web, App, HttpResponse,
+        web::{self, Data},
+        App, HttpResponse,
     };
     use cadence::StatsdClient;
     use regex::Regex;
@@ -149,18 +147,23 @@ pub mod tests {
         // Set up a service that logs metrics to vec we own
         let log = Arc::new(Mutex::new(Vec::new()));
         let state = EndpointState {
-            metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
+            metrics: Arc::new(StatsdClient::from_sink(
+                "test",
+                TestMetricSink { log: log.clone() },
+            )),
             ..EndpointState::default()
         };
-        let mut service = test::init_service(App::new().app_data(state).wrap(ResponseTimer).route(
-            "/",
-            web::get().to(|| HttpResponse::InternalServerError().finish()),
-        ))
+        let service = test::init_service(
+            App::new()
+                .app_data(Data::new(state))
+                .wrap(ResponseTimer)
+                .route("/", web::get().to(HttpResponse::InternalServerError)),
+        )
         .await;
 
         // Make a request to that service
         let request = TestRequest::with_uri("/").to_request();
-        test::call_service(&mut service, request).await;
+        test::call_service(&service, request).await;
 
         // Check that the logged metric line looks as expected
         let log = log.lock().unwrap();
@@ -183,18 +186,23 @@ pub mod tests {
         // Set up a service that logs metrics to vec we own
         let log = Arc::new(Mutex::new(Vec::new()));
         let state = EndpointState {
-            metrics: StatsdClient::from_sink("test", TestMetricSink { log: log.clone() }),
+            metrics: Arc::new(StatsdClient::from_sink(
+                "test",
+                TestMetricSink { log: log.clone() },
+            )),
             ..EndpointState::default()
         };
-        let mut service = test::init_service(App::new().app_data(state).wrap(ResponseTimer).route(
-            "/",
-            web::get().to(|| HttpResponse::InternalServerError().finish()),
-        ))
+        let service = test::init_service(
+            App::new()
+                .app_data(Data::new(state))
+                .wrap(ResponseTimer)
+                .route("/", web::get().to(HttpResponse::InternalServerError)),
+        )
         .await;
 
         // Make a request to that service
         let request = TestRequest::with_uri("/").to_request();
-        test::call_service(&mut service, request).await;
+        test::call_service(&service, request).await;
 
         // Check that the logged metric line looks as expected
         let log = log.lock().unwrap();

@@ -1,9 +1,9 @@
-use crate::errors::ClassifyError;
+use crate::errors::ProxyError;
 use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 fn default_geoip_db_path() -> PathBuf {
-    "./GeoLite2-Country.mmdb".into()
+    "./GeoIP2-City.mmdb".into()
 }
 
 fn default_host() -> String {
@@ -20,6 +20,10 @@ fn default_version_file() -> PathBuf {
 
 fn default_metrics_target() -> String {
     "localhost:8125".to_owned()
+}
+
+fn default_adzerk_api_key() -> String {
+    "test".to_owned()
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -52,6 +56,9 @@ pub struct Settings {
     /// required. Defaults to "localhost:8125".
     #[serde(default = "default_metrics_target")]
     pub metrics_target: String,
+
+    #[serde(default = "default_adzerk_api_key")]
+    pub adzerk_api_key: String,
 }
 
 impl Default for Settings {
@@ -66,7 +73,7 @@ impl Default for Settings {
 
 impl Settings {
     /// Load settings from the environment.
-    pub fn load() -> Result<Self, ClassifyError> {
+    pub fn load() -> Result<Self, ProxyError> {
         let settings: Self = envy::from_env()?;
         Ok(settings)
     }
@@ -82,15 +89,12 @@ mod tests {
     fn test_default_settings() {
         let settings = Settings::default();
 
-        assert_eq!(settings.debug, false);
-        assert_eq!(
-            settings.geoip_db_path.to_str(),
-            Some("./GeoLite2-Country.mmdb")
-        );
+        assert!(!settings.debug);
+        assert_eq!(settings.geoip_db_path.to_str(), Some("./GeoIP2-City.mmdb"));
         assert_eq!(settings.host, "[::]");
         assert_eq!(settings.port, 8000);
         assert_eq!(settings.trusted_proxy_list, Vec::new());
-        assert_eq!(settings.human_logs, false);
+        assert!(!settings.human_logs);
         assert_eq!(settings.version_file.to_str(), Some("./version.json"));
         assert_eq!(settings.sentry_dsn, None);
         assert_eq!(settings.metrics_target, "localhost:8125");
@@ -104,7 +108,7 @@ mod tests {
 
         let settings = Settings::load().unwrap();
 
-        assert_eq!(settings.debug, true);
+        assert!(settings.debug);
         assert_eq!(settings.port, 8888);
         assert_eq!(settings.trusted_proxy_list.len(), 2);
     }

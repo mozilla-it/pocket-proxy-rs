@@ -2,6 +2,7 @@
 //!
 #![deny(clippy::all)]
 
+pub mod adzerk;
 pub mod endpoints;
 pub mod errors;
 pub mod geoip;
@@ -11,17 +12,23 @@ pub mod settings;
 pub mod utils;
 
 use crate::{
-    endpoints::{classify, debug, dockerflow, EndpointState},
-    errors::ClassifyError,
+    adzerk::client::AdzerkClient,
+    endpoints::{debug, delete_user, dockerflow, spocs, EndpointState},
+    errors::ProxyError,
     geoip::GeoIp,
     settings::Settings,
 };
-use actix_web::{web, App};
+use actix_web::{
+    web::{self, Data},
+    App,
+};
+
 use std::sync::Arc;
 
-const APP_NAME: &str = "classify-client";
+const APP_NAME: &str = "pocket-proxy";
 
-fn main() -> Result<(), ClassifyError> {
+#[actix_web::main]
+async fn main() -> Result<(), ProxyError> {
     let Settings {
         debug,
         geoip_db_path,
@@ -31,19 +38,22 @@ fn main() -> Result<(), ClassifyError> {
         port,
         trusted_proxy_list,
         version_file,
+        adzerk_api_key,
         ..
     } = Settings::load()?;
 
     let app_log = logging::get_logger("app", human_logs);
 
-    let metrics = metrics::get_client(metrics_target, app_log.clone())
-        .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {}", err));
+    let metrics = Arc::new(
+        metrics::get_client(metrics_target, app_log.clone())
+            .unwrap_or_else(|err| panic!("Critical failure setting up metrics logging: {}", err)),
+    );
 
     let state = EndpointState {
         geoip: Arc::new(
             GeoIp::builder()
                 .path(geoip_db_path)
-                .metrics(metrics.clone())
+                .metrics(Arc::clone(&metrics))
                 .build()?,
         ),
         metrics,
@@ -56,16 +66,15 @@ fn main() -> Result<(), ClassifyError> {
     slog::info!(app_log, "starting server on https://{}", addr);
 
     actix_web::HttpServer::new(move || {
+        let adzerk_client = AdzerkClient::new(adzerk_api_key.clone());
         let mut app = App::new()
-            .data(state.clone())
+            .app_data(Data::new(state.clone()))
+            .app_data(Data::new(adzerk_client))
             .wrap(metrics::ResponseTimer)
             .wrap(logging::RequestLogger)
             // API Endpoints
-            .service(web::resource("/").route(web::get().to(classify::classify_client)))
-            .service(
-                web::resource("/api/v1/classify_client/")
-                    .route(web::get().to(classify::classify_client)),
-            )
+            .service(web::resource("/spocs").route(web::post().to(spocs::spocs)))
+            .service(web::resource("/user").route(web::delete().to(delete_user::delete_user)))
             // Dockerflow Endpoints
             .service(
                 web::resource("/__lbheartbeat__").route(web::get().to(dockerflow::lbheartbeat)),
@@ -80,7 +89,8 @@ fn main() -> Result<(), ClassifyError> {
         app
     })
     .bind(&addr)?
-    .run();
+    .run()
+    .await?;
 
     Ok(())
 }
