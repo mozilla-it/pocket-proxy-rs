@@ -253,7 +253,7 @@ fn clean_sponsored_by_override(mut sponsored_by_override: String) -> String {
 fn get_is_video(is_video: Option<String>) -> Option<bool> {
     is_video.and_then(|mut is_video| {
         is_video.make_ascii_lowercase();
-        match is_video.as_str() {
+        match is_video.trim() {
             "y" | "yes" | "t" | "true" | "on" | "1" => Some(true),
             "n" | "no" | "f" | "false" | "off" | "0" => Some(false),
             _ => None,
