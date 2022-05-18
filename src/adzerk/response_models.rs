@@ -19,51 +19,47 @@ pub struct DecisionResponse {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Decision {
-    pub ad_id: u32,
-    pub flight_id: u32,
-    pub campaign_id: u32,
-    pub priority_id: Option<u32>,
-    pub click_url: String,
-    pub contents: [Content; 1],
-    pub impression_url: String,
-    pub events: Vec<Event>,
+    ad_id: u32,
+    flight_id: u32,
+    campaign_id: u32,
+    priority_id: Option<u32>,
+    click_url: String,
+    contents: [Content; 1],
+    impression_url: String,
+    events: Vec<Event>,
 }
 
 #[derive(Deserialize)]
 pub struct Content {
-    #[serde(rename(deserialize = "type"))]
-    pub type_: String,
-    pub data: Data,
-    pub body: Option<String>,
+    data: Data,
+    body: Option<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Data {
-    pub ct_title: String,
-    pub ct_url: String,
-    pub ct_domain: String,
-    pub ct_excerpt: String,
-    pub ct_sponsor: Option<String>,
-    pub ct_fullimagepath: String,
+    ct_title: String,
+    ct_url: String,
+    ct_domain: String,
+    ct_excerpt: String,
+    ct_sponsor: Option<String>,
+    ct_fullimagepath: String,
     #[serde(rename(deserialize = "ctMin_score"))]
-    pub ct_min_score: Option<String>,
+    ct_min_score: Option<String>,
     #[serde(rename(deserialize = "ctItem_score"))]
-    pub ct_item_score: Option<String>,
+    ct_item_score: Option<String>,
     #[serde(rename(deserialize = "ctDomain_affinities"))]
-    pub ct_domain_affinities: Option<String>,
-    pub ct_cta: Option<String>,
-    pub ct_collection_title: Option<String>,
-    pub ct_is_video: Option<String>,
-    pub ct_image: Option<String>,
-    pub file_name: Option<String>,
-    pub ct_sponsored_by_override: Option<String>,
+    ct_domain_affinities: Option<String>,
+    ct_cta: Option<String>,
+    ct_collection_title: Option<String>,
+    ct_is_video: Option<String>,
+    ct_sponsored_by_override: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct Event {
-    pub id: u32,
-    pub url: String,
+    id: u32,
+    url: String,
 }
 
 impl SpocsResponse {

@@ -44,15 +44,15 @@ impl Placement {
 
 #[derive(Serialize)]
 pub struct User {
-    pub key: String,
+    key: String,
 }
 
 // Adzerk Input Type
 #[derive(Serialize)]
 pub struct DecisionRequest {
-    pub placements: Vec<Placement>,
-    pub user: User,
-    pub keywords: Vec<String>,
+    placements: Vec<Placement>,
+    user: User,
+    keywords: Vec<String>,
 }
 
 impl From<SpocsRequest> for DecisionRequest {
