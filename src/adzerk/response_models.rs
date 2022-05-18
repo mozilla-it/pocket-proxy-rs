@@ -13,7 +13,7 @@ use std::collections::HashMap;
 // AdZerk Output Type
 #[derive(Deserialize)]
 pub struct DecisionResponse {
-    pub decisions: HashMap<String, Vec<Decision>>,
+    pub decisions: HashMap<String, Option<Vec<Decision>>>,
 }
 
 #[derive(Deserialize)]
@@ -47,11 +47,11 @@ pub struct Data {
     pub ct_sponsor: Option<String>,
     pub ct_fullimagepath: String,
     #[serde(rename(deserialize = "ctMin_score"))]
-    pub ct_min_score: Option<f64>,
+    pub ct_min_score: Option<String>,
     #[serde(rename(deserialize = "ctItem_score"))]
-    pub ct_item_score: Option<f64>,
+    pub ct_item_score: Option<String>,
     #[serde(rename(deserialize = "ctDomain_affinities"))]
-    pub ct_domain_affinities: String,
+    pub ct_domain_affinities: Option<String>,
     pub ct_cta: Option<String>,
     pub ct_collection_title: Option<String>,
     pub ct_is_video: Option<String>,
@@ -75,8 +75,11 @@ impl SpocsResponse {
             .decisions
             .into_iter()
             .map(|(div, decisions)| {
-                let spocs: Result<Vec<_>, ProxyError> =
-                    decisions.into_iter().map(TryInto::try_into).collect();
+                let spocs: Result<Vec<_>, ProxyError> = decisions
+                    .into_iter()
+                    .flatten()
+                    .map(TryInto::try_into)
+                    .collect();
                 let spoc_list = SpocsList::from_spocs(spocs?, version);
                 Ok((div, spoc_list))
             })
@@ -144,8 +147,14 @@ impl TryFrom<Decision> for Spoc {
             caps: &defaults::CAPS,
             domain_affinities: get_domain_affinities(custom_data.ct_domain_affinities),
             personalization_models: get_personalization_models(contents.body)?,
-            min_score: custom_data.ct_min_score.unwrap_or(0.1),
-            item_score: custom_data.ct_item_score.unwrap_or(0.2),
+            min_score: custom_data
+                .ct_min_score
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0.1),
+            item_score: custom_data
+                .ct_item_score
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0.2),
             cta: custom_data.ct_cta,
             collection_title: custom_data.ct_collection_title,
             sponsor: custom_data.ct_sponsor,
@@ -200,16 +209,16 @@ fn get_cdn_image(full_image_path: &str) -> Result<String, ProxyError> {
             full_image_path
         )));
     }
-    let escaped = serde_urlencoded::to_string(full_image_path).unwrap();
-    Ok(format!(
-        "https://img-getpocket.cdn.mozilla.net/direct?url={0}&resize=w618-h310",
-        escaped
-    ))
+    let mut result = "https://img-getpocket.cdn.mozilla.net/direct?".to_owned();
+    form_urlencoded::Serializer::new(&mut result)
+        .append_pair("url", full_image_path)
+        .append_pair("resize", "w618-h310")
+        .finish();
+    Ok(result)
 }
 
-fn get_domain_affinities(name: String) -> &'static HashMap<String, u32> {
-    defaults::DOMAIN_AFFINITIES
-        .get(&name)
+fn get_domain_affinities(name: Option<String>) -> &'static HashMap<String, u32> {
+    name.and_then(|name| defaults::DOMAIN_AFFINITIES.get(&name))
         .unwrap_or(&defaults::EMPTY_DOMAIN_AFFINITIES)
 }
 
@@ -287,7 +296,7 @@ mod tests {
     use super::Decision;
 
     #[test]
-    fn test_deserialize_responses() {
+    fn test_deserialize_decisions() {
         let _: Vec<Decision> = serde_json::from_str(include_str!("mock_decision.json")).unwrap();
     }
 }
