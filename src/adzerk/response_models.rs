@@ -284,9 +284,74 @@ fn tracking_url_to_shim(url: String) -> Result<String, ProxyError> {
 #[cfg(test)]
 mod tests {
     use super::Decision;
+    use crate::adzerk::response_models::{
+        clean_sponsored_by_override, get_cdn_image, get_is_video, tracking_url_to_shim,
+    };
+    use std::collections::HashMap;
 
     #[test]
     fn test_deserialize_decisions() {
         let _: Vec<Decision> = serde_json::from_str(include_str!("mock_decision.json")).unwrap();
+    }
+
+    #[test]
+    fn test_tracking_url_to_shim() {
+        let test_string: String = "https://example.local/r?e=123&s=456&j=789".to_string();
+        let test_result = tracking_url_to_shim(test_string).unwrap();
+        assert_eq!(test_result, "0,123,456")
+    }
+
+    #[test]
+    fn test_is_video() {
+        let test_map: HashMap<Option<String>, Option<bool>> = [
+            (Some(String::from("t")), Some(true)),
+            (Some(String::from("off")), Some(false)),
+            (Some(String::from("1")), Some(true)),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        for (key, value) in test_map {
+            assert_eq!(get_is_video(key), value);
+        }
+    }
+
+    #[test]
+    fn test_clean_sponsored_by_override() {
+        let test_map: HashMap<&str, &str> = [
+            ("        blank", ""),
+            ("king fisher", "king fisher"),
+            ("", ""),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        for (key, value) in test_map {
+            assert_eq!(
+                clean_sponsored_by_override(key.to_string()),
+                value.to_string()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_cdn_image() {
+        let image_url = "https://img-getpocket.cdn.mozilla.net/direct?";
+        let test_map: HashMap<&str, String> = [(
+            "https://subdomain.zkcdn.net/foo/bar",
+            format!(
+                "{}&url=https%3A%2F%2Fsubdomain.zkcdn.net%2Ffoo%2Fbar&resize=w618-h310",
+                image_url
+            ),
+        )]
+        .iter()
+        .cloned()
+        .collect();
+
+        for (key, value) in test_map {
+            assert_eq!(get_cdn_image(key).unwrap(), value);
+        }
     }
 }
