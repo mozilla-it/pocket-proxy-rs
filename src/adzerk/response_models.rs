@@ -285,7 +285,8 @@ fn tracking_url_to_shim(url: String) -> Result<String, ProxyError> {
 mod tests {
     use super::Decision;
     use crate::adzerk::response_models::{
-        clean_sponsored_by_override, get_cdn_image, get_is_video, tracking_url_to_shim,
+        clean_sponsored_by_override, get_cdn_image, get_is_video, get_personalization_models,
+        tracking_url_to_shim,
     };
     use std::collections::HashMap;
 
@@ -353,5 +354,17 @@ mod tests {
         for (key, value) in test_map {
             assert_eq!(get_cdn_image(key).unwrap(), value);
         }
+    }
+
+    #[test]
+    fn test_get_personalization_models() {
+        let test_string = Some(String::from("{\"topic_fun\": true}"));
+        let mut test_result: HashMap<String, u32> = HashMap::new();
+        test_result.insert("fun".to_string(), 1);
+
+        assert_eq!(
+            get_personalization_models(test_string).unwrap(),
+            test_result
+        );
     }
 }
