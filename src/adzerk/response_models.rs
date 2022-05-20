@@ -197,12 +197,14 @@ fn map_priority(priority_id: Option<u32>) -> u32 {
 fn get_cdn_image(full_image_path: &str) -> Result<String, ProxyError> {
     match full_image_path.parse::<Uri>()?.host() {
         Some(domain) if domain.ends_with(".zkcdn.net") || domain == "zkcdn.net" => {
-            let mut result = "https://img-getpocket.cdn.mozilla.net/direct?".to_owned();
-            form_urlencoded::Serializer::new(&mut result)
+            let url = form_urlencoded::Serializer::new(String::new())
                 .append_pair("url", full_image_path)
                 .append_pair("resize", "w618-h310")
                 .finish();
-            Ok(result)
+            Ok(format!(
+                "https://img-getpocket.cdn.mozilla.net/direct?{}",
+                url
+            ))
         }
         _ => Err(ProxyError::new(format!(
             "Invalid AdZerk image url: {}",
@@ -283,10 +285,78 @@ fn tracking_url_to_shim(url: String) -> Result<String, ProxyError> {
 
 #[cfg(test)]
 mod tests {
-    use super::Decision;
+    use super::{
+        clean_sponsored_by_override, get_cdn_image, get_is_video, get_personalization_models,
+        tracking_url_to_shim, Decision,
+    };
+    use std::collections::HashMap;
 
     #[test]
     fn test_deserialize_decisions() {
         let _: Vec<Decision> = serde_json::from_str(include_str!("mock_decision.json")).unwrap();
+    }
+
+    #[test]
+    fn test_tracking_url_to_shim() {
+        let test_string: String = "https://example.local/r?e=123&s=456&j=789".to_owned();
+        let test_result = tracking_url_to_shim(test_string).unwrap();
+        assert_eq!(test_result, "0,123,456")
+    }
+
+    #[test]
+    fn test_is_video() {
+        let test_cases = [
+            (Some("t".to_owned()), Some(true)),
+            (Some("off".to_owned()), Some(false)),
+            (Some("1".to_owned()), Some(true)),
+        ];
+
+        for (key, value) in test_cases {
+            assert_eq!(get_is_video(key), value);
+        }
+    }
+
+    #[test]
+    fn test_clean_sponsored_by_override() {
+        let test_cases = [
+            ("        blank", ""),
+            ("king fisher", "king fisher"),
+            ("", ""),
+        ];
+
+        for (key, value) in test_cases {
+            assert_eq!(
+                clean_sponsored_by_override(key.to_owned()),
+                value.to_owned()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_cdn_image() {
+        let image_url = "https://img-getpocket.cdn.mozilla.net/direct";
+        let test_cases = [(
+            "https://subdomain.zkcdn.net/foo/bar",
+            format!(
+                "{}?url=https%3A%2F%2Fsubdomain.zkcdn.net%2Ffoo%2Fbar&resize=w618-h310",
+                image_url
+            ),
+        )];
+
+        for (key, value) in test_cases {
+            assert_eq!(get_cdn_image(key).unwrap(), value);
+        }
+    }
+
+    #[test]
+    fn test_get_personalization_models() {
+        let test_string = Some("{\"topic_fun\": true}".to_owned());
+        let mut test_result: HashMap<String, u32> = HashMap::new();
+        test_result.insert("fun".to_owned(), 1);
+
+        assert_eq!(
+            get_personalization_models(test_string).unwrap(),
+            test_result
+        );
     }
 }
