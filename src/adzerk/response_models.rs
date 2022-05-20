@@ -197,12 +197,14 @@ fn map_priority(priority_id: Option<u32>) -> u32 {
 fn get_cdn_image(full_image_path: &str) -> Result<String, ProxyError> {
     match full_image_path.parse::<Uri>()?.host() {
         Some(domain) if domain.ends_with(".zkcdn.net") || domain == "zkcdn.net" => {
-            let result = "https://img-getpocket.cdn.mozilla.net/direct";
             let url = form_urlencoded::Serializer::new(String::new())
                 .append_pair("url", full_image_path)
                 .append_pair("resize", "w618-h310")
                 .finish();
-            Ok(format!("{}?{}", result, url))
+            Ok(format!(
+                "https://img-getpocket.cdn.mozilla.net/direct?{}",
+                url
+            ))
         }
         _ => Err(ProxyError::new(format!(
             "Invalid AdZerk image url: {}",
