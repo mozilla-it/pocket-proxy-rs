@@ -289,11 +289,69 @@ mod tests {
         clean_sponsored_by_override, get_cdn_image, get_is_video, get_personalization_models,
         tracking_url_to_shim, Decision,
     };
+    use lazy_static::lazy_static;
+    use serde_json::Value;
     use std::collections::HashMap;
+
+    fn mock_decision(index: usize) -> Decision {
+        lazy_static! {
+            static ref DECISIONS: Vec<Value> =
+                serde_json::from_str(include_str!("fixtures/decision.json")).unwrap();
+        }
+        match index {
+            0..=2 => serde_json::from_value(DECISIONS[index].clone()).unwrap(),
+            4 => {
+                let mut decision: Decision = serde_json::from_value(DECISIONS[1].clone()).unwrap();
+                decision.ad_id = index as _;
+                decision.contents[0].data.ct_collection_title = Some("Best of the Web".to_owned());
+                decision
+            }
+            _ => {
+                let mut decision: Decision = serde_json::from_value(DECISIONS[2].clone()).unwrap();
+                decision.ad_id = index as _;
+                match index {
+                    3 => {
+                        decision.contents[0].data.ct_cta = Some("Learn more".to_owned());
+                    }
+                    5 => {
+                        decision.contents[0].body = Some(
+                            r#"{\
+                                "topic_arts_and_entertainment":"",\
+                                "topic_autos_and_vehicles":"true",\
+                                "topic_beauty_and_fitness":"true"\
+                            }"#
+                            .to_owned(),
+                        );
+                    }
+                    6 => {
+                        decision.contents[0].data.ct_sponsor = None;
+                    }
+                    7 => {
+                        decision.contents[0].data.ct_is_video = Some(" Yes  ".to_owned());
+                    }
+                    8 => {
+                        decision.contents[0].data.ct_sponsored_by_override =
+                            Some("BLANK ".to_owned());
+                    }
+                    9 => {
+                        decision.contents[0].data.ct_sponsored_by_override =
+                            Some("Brought by blank".to_owned());
+                    }
+                    10 => {
+                        decision.priority_id = None;
+                    }
+                    _ => panic!("invalid mock_decision index"),
+                }
+                decision
+            }
+        }
+    }
 
     #[test]
     fn test_deserialize_decisions() {
-        let _: Vec<Decision> = serde_json::from_str(include_str!("mock_decision.json")).unwrap();
+        for i in 0..2 {
+            mock_decision(i);
+        }
     }
 
     #[test]
@@ -350,7 +408,7 @@ mod tests {
 
     #[test]
     fn test_get_personalization_models() {
-        let test_string = Some("{\"topic_fun\": true}".to_owned());
+        let test_string = Some(r#"{"topic_fun": true}"#.to_owned());
         let mut test_result: HashMap<String, u32> = HashMap::new();
         test_result.insert("fun".to_owned(), 1);
 
