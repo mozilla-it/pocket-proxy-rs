@@ -173,7 +173,7 @@ impl EventsMap {
     fn remove(&mut self, event_id: u32) -> Result<String, ProxyError> {
         self.map
             .remove(&event_id)
-            .ok_or_else(|| ProxyError::new("invalid event i"))
+            .ok_or_else(|| ProxyError::new(format!("invalid event {}", event_id)))
     }
 }
 
@@ -286,11 +286,15 @@ fn tracking_url_to_shim(url: String) -> Result<String, ProxyError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        clean_sponsored_by_override, get_cdn_image, get_is_video, get_personalization_models,
-        tracking_url_to_shim, Decision,
+        clean_sponsored_by_override, defaults, get_cdn_image, get_is_video,
+        get_personalization_models, tracking_url_to_shim, Content, Data, Decision,
+        DecisionResponse, Event,
     };
+
+    use crate::endpoints::spocs::{Shim, Spoc, SpocsList, SpocsResponse, Collection};
     use std::collections::HashMap;
 
+    #[ignore]
     #[test]
     fn test_deserialize_decisions() {
         let _: Vec<Decision> = serde_json::from_str(include_str!("mock_decision.json")).unwrap();
@@ -357,6 +361,106 @@ mod tests {
         assert_eq!(
             get_personalization_models(test_string).unwrap(),
             test_result
+        );
+    }
+
+    #[test]
+    fn test_from_decision_response() {
+        let decision = Decision {
+            ad_id: 1,
+            flight_id: 2,
+            campaign_id: 3,
+            priority_id: Some(4),
+            click_url: "https://example.local/r?e=123&s=456&j=789".to_string(),
+            events: vec![
+                Event {
+                    id: 17,
+                    url: "https://example.local/r?e=123&s=456&j=789".to_string(),
+                },
+                Event {
+                    id: 20,
+                    url: "https://example.local/r?e=123&s=456&j=789".to_string(),
+                },
+            ],
+            contents: [Content {
+                data: Data {
+                    ct_title: "foo".to_string(),
+                    ct_url: "foo.local".to_string(),
+                    ct_domain: "foo.local".to_string(),
+                    ct_sponsor: Some("bar".to_string()),
+                    ct_fullimagepath: "foo.local.zkcdn.net".to_string(),
+                    ct_min_score: Some("0.1".to_string()),
+                    ct_item_score: Some("0.1".to_string()),
+                    ct_domain_affinities: Some("1".to_string()),
+                    ct_cta: Some("1".to_string()),
+                    ct_collection_title: Some("collection_title".to_string()),
+                    ct_is_video: Some("y".to_string()),
+                    ct_sponsored_by_override: Some("empty".to_string()),
+                    ct_excerpt: "banana".to_string(),
+                },
+                body: Some("{\"fun\": \"test\"}".to_string()),
+            }],
+            impression_url: "https://example.local/r?e=123&s=456&j=789".to_string(),
+        };
+
+        let mut decisions = HashMap::new();
+        decisions.insert("test".to_string(), Some(vec![decision]));
+
+        let decision_response = DecisionResponse { decisions };
+
+        let spoc = Spoc {
+            id: 1,
+            flight_id: 2,
+            campaign_id: 3,
+            title: "foo".to_string(),
+            url: "foo.local".to_string(),
+            domain: "foo.local".to_string(),
+            excerpt: "banana".to_string(),
+            priority: 4,
+            context: "context".to_string(),
+            raw_image_src: "raw_image_src".to_string(),
+            image_src: "image_src".to_string(),
+            shim: Shim {
+                click: "https://example.local/r?e=123&s=456&j=789".to_string(),
+                impression: "https://example.local/r?e=123&s=456&j=789".to_string(),
+                delete: "delete".to_string(),
+                save: "save".to_string(),
+            },
+            parameter_set: "default",
+            caps: &defaults::CAPS,
+            domain_affinities: &defaults::EMPTY_DOMAIN_AFFINITIES,
+            personalization_models: HashMap::new(),
+            min_score: 0.1,
+            item_score: 0.1,
+            cta: Some("cta".to_string()),
+            collection_title: None,
+            sponsor: Some("bar".to_string()),
+            sponsored_by_override: Some("".to_string()),
+            is_video: Some(true),
+        };
+
+        let collection = Collection {
+            title: "foo".to_string(),
+            flight_id: 2,
+            sponsor: Some("bar".to_string()),
+            context: "Sponsored by bar".to_string(),
+            items: vec!(spoc),
+        };
+
+        let spocs_list = SpocsList::Collection(collection);
+
+        let mut divs: HashMap<String, SpocsList>;
+        divs = HashMap::new();
+        divs.insert("test".to_string(), spocs_list);
+
+        let spocs_response = SpocsResponse {
+            settings: &defaults::SETTINGS,
+            divs,
+        };
+
+        assert_eq!(
+            SpocsResponse::from_decision_response(decision_response, 3).unwrap(),
+            spocs_response
         );
     }
 }

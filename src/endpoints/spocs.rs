@@ -33,21 +33,21 @@ pub struct Placement {
     pub count: Option<u32>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, PartialEq)]
 pub struct SpocsResponse {
     pub settings: &'static serde_json::Value,
     #[serde(flatten)]
     pub divs: HashMap<String, SpocsList>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum SpocsList {
     Standard(Vec<Spoc>),
     Collection(Collection),
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, PartialEq)]
 pub struct Collection {
     pub title: String,
     pub flight_id: u32,
@@ -57,7 +57,7 @@ pub struct Collection {
     pub items: Vec<Spoc>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, PartialEq)]
 pub struct Spoc {
     pub id: u32,
     pub flight_id: u32,
@@ -89,7 +89,7 @@ pub struct Spoc {
     pub is_video: Option<bool>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, PartialEq)]
 pub struct Shim {
     pub click: String,
     pub impression: String,
