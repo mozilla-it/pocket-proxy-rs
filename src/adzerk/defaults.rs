@@ -1,6 +1,6 @@
 use super::request_models::Placement;
 use lazy_static::lazy_static;
-use serde_json::{from_str, json, Value};
+use serde_json::{from_str, from_value, json, Value};
 use std::collections::HashMap;
 
 pub const NETWORK_ID: u32 = 10250;
@@ -33,6 +33,12 @@ lazy_static! {
     pub static ref DOMAIN_AFFINITIES: HashMap<String, HashMap<String, u32>> =
         from_str(include_str!("domain_affinities.json")).unwrap();
     pub static ref EMPTY_DOMAIN_AFFINITIES: HashMap<String, u32> = HashMap::new();
+    pub static ref TEST_DOMAIN_AFFINITIES: HashMap<String, HashMap<String, u32>> =
+        from_value(json!({
+            "publishers": {
+                "example.com": 1
+            }
+        })).unwrap();
 }
 
 #[cfg(test)]

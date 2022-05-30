@@ -214,7 +214,12 @@ fn get_cdn_image(full_image_path: &str) -> Result<String, ProxyError> {
 }
 
 fn get_domain_affinities(name: Option<String>) -> &'static HashMap<String, u32> {
-    name.and_then(|name| defaults::DOMAIN_AFFINITIES.get(&name))
+    let affinities: &HashMap<_, _> = if cfg!(test) {
+        &defaults::TEST_DOMAIN_AFFINITIES
+    } else {
+        &defaults::DOMAIN_AFFINITIES
+    };
+    name.and_then(|name| affinities.get(&name))
         .unwrap_or(&defaults::EMPTY_DOMAIN_AFFINITIES)
 }
 
@@ -285,12 +290,15 @@ fn tracking_url_to_shim(url: String) -> Result<String, ProxyError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::endpoints::spocs::Spoc;
+
     use super::{
         clean_sponsored_by_override, get_cdn_image, get_is_video, get_personalization_models,
         tracking_url_to_shim, Decision,
     };
+    use assert_json_diff::assert_json_eq;
     use lazy_static::lazy_static;
-    use serde_json::Value;
+    use serde_json::{json, Value};
     use std::collections::HashMap;
 
     fn mock_decision(index: usize) -> Decision {
@@ -315,10 +323,10 @@ mod tests {
                     }
                     5 => {
                         decision.contents[0].body = Some(
-                            r#"{\
-                                "topic_arts_and_entertainment":"",\
-                                "topic_autos_and_vehicles":"true",\
-                                "topic_beauty_and_fitness":"true"\
+                            r#"{
+                                "topic_arts_and_entertainment":"",
+                                "topic_autos_and_vehicles":"true",
+                                "topic_beauty_and_fitness":"true"
                             }"#
                             .to_owned(),
                         );
@@ -351,6 +359,43 @@ mod tests {
     fn test_deserialize_decisions() {
         for i in 0..2 {
             mock_decision(i);
+        }
+    }
+
+    fn mock_spoc(index: usize) -> Value {
+        lazy_static! {
+            static ref SPOC: Value =
+                serde_json::from_str(include_str!("fixtures/spoc.json")).unwrap();
+        }
+        let mut spoc = SPOC.clone();
+        spoc["id"] = json!(index);
+        match index {
+            2 => {}
+            3 => spoc["cta"] = json!("Learn more"),
+            5 => {
+                spoc["personalization_models"] =
+                    json!({"autos_and_vehicles": 1, "beauty_and_fitness": 1})
+            }
+            6 => {
+                spoc.as_object_mut().unwrap().remove("sponsor");
+                spoc["context"] = json!("");
+            }
+            7 => spoc["is_video"] = json!(true),
+            8 => spoc["sponsored_by_override"] = json!(""),
+            9 => spoc["sponsored_by_override"] = json!("Brought by blank"),
+            10 => spoc["priority"] = json!(100),
+            _ => panic!("invalid mock_spox index"),
+        }
+        spoc
+    }
+
+    #[test]
+    fn test_decision_to_spoc() {
+        for index in [2, 3, 5, 6, 7, 8, 9, 10] {
+            let decision = mock_decision(index);
+            let spoc: Spoc = decision.try_into().unwrap();
+            let spoc_json: Value = json!(spoc);
+            assert_json_eq!(spoc_json, mock_spoc(index));
         }
     }
 
