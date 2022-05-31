@@ -1238,6 +1238,7 @@ version = "0.1.0"
 dependencies = [
  "actix-rt",
  "actix-web",
+ "assert-json-diff",
  "awc",
  "cadence",
  "envy",

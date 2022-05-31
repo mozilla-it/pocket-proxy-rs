@@ -1,0 +1,38 @@
+{
+    "id": 2,
+    "flight_id": 8525375,
+    "campaign_id": 887195,
+    "title": "Refresh Your Space for Spring",
+    "url": "https://example.com/?key=foobar",
+    "domain": "wallmarket.com",
+    "excerpt": "Get up to 50% off furniture, bedding, and more.",
+    "priority": 1,
+    "context": "Sponsored by WallMarket",
+    "sponsor": "WallMarket",
+    "raw_image_src": "https://zkcdn.net/25a.jpg",
+    "image_src": "https://img-getpocket.cdn.mozilla.net/direct?url=https%3A%2F%2Fzkcdn.net%2F25a.jpg&resize=w618-h310",
+    "shim": {
+        "click": "0,jq,s2",
+        "impression": "1,ke1,s3",
+        "delete": "2,eyJ2,Y6",
+        "save": "2,wfQ,Rj-6"
+    },
+    "parameter_set": "default",
+    "caps": {
+        "lifetime": 50,
+        "campaign": {
+            "count": 10,
+            "period": 86400
+        },
+        "flight": {
+            "count": 10,
+            "period": 86400
+        }
+    },
+    "domain_affinities": {
+        "example.com": 1
+    },
+    "personalization_models": {},
+    "min_score": 0.1,
+    "item_score": 0.2
+}
