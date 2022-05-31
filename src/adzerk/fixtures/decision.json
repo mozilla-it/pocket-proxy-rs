@@ -1,6 +1,6 @@
 [
     {
-        "adId": 4,
+        "adId": 0,
         "creativeId": 222,
         "flightId": 333,
         "campaignId": 900,
@@ -56,7 +56,7 @@
         }
     },
     {
-        "adId": 10,
+        "adId": 1,
         "creativeId": 9142593,
         "flightId": 8525375,
         "campaignId": 887195,
