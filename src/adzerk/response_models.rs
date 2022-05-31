@@ -290,12 +290,11 @@ fn tracking_url_to_shim(url: String) -> Result<String, ProxyError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::endpoints::spocs::Spoc;
-
     use super::{
         clean_sponsored_by_override, get_cdn_image, get_is_video, get_personalization_models,
         tracking_url_to_shim, Decision,
     };
+    use crate::endpoints::spocs::Spoc;
     use assert_json_diff::assert_json_eq;
     use lazy_static::lazy_static;
     use serde_json::{json, Value};
@@ -306,53 +305,38 @@ mod tests {
             static ref DECISIONS: Vec<Value> =
                 serde_json::from_str(include_str!("fixtures/decision.json")).unwrap();
         }
+        let source = match index {
+            0..=2 => index,
+            4 => 1,
+            _ => 2,
+        };
+        let mut decision: Decision = serde_json::from_value(DECISIONS[source].clone()).unwrap();
+        decision.ad_id = index as _;
         match index {
-            0..=2 => serde_json::from_value(DECISIONS[index].clone()).unwrap(),
-            4 => {
-                let mut decision: Decision = serde_json::from_value(DECISIONS[1].clone()).unwrap();
-                decision.ad_id = index as _;
-                decision.contents[0].data.ct_collection_title = Some("Best of the Web".to_owned());
-                decision
+            0..=2 => {}
+            3 => decision.contents[0].data.ct_cta = Some("Learn more".to_owned()),
+            4 => decision.contents[0].data.ct_collection_title = Some("Best of the Web".to_owned()),
+            5 => {
+                decision.contents[0].body = Some(
+                    r#"{
+                        "topic_arts_and_entertainment":"",
+                        "topic_autos_and_vehicles":"true",
+                        "topic_beauty_and_fitness":"true"
+                    }"#
+                    .to_owned(),
+                )
             }
-            _ => {
-                let mut decision: Decision = serde_json::from_value(DECISIONS[2].clone()).unwrap();
-                decision.ad_id = index as _;
-                match index {
-                    3 => {
-                        decision.contents[0].data.ct_cta = Some("Learn more".to_owned());
-                    }
-                    5 => {
-                        decision.contents[0].body = Some(
-                            r#"{
-                                "topic_arts_and_entertainment":"",
-                                "topic_autos_and_vehicles":"true",
-                                "topic_beauty_and_fitness":"true"
-                            }"#
-                            .to_owned(),
-                        );
-                    }
-                    6 => {
-                        decision.contents[0].data.ct_sponsor = None;
-                    }
-                    7 => {
-                        decision.contents[0].data.ct_is_video = Some(" Yes  ".to_owned());
-                    }
-                    8 => {
-                        decision.contents[0].data.ct_sponsored_by_override =
-                            Some("BLANK ".to_owned());
-                    }
-                    9 => {
-                        decision.contents[0].data.ct_sponsored_by_override =
-                            Some("Brought by blank".to_owned());
-                    }
-                    10 => {
-                        decision.priority_id = None;
-                    }
-                    _ => panic!("invalid mock_decision index"),
-                }
-                decision
+            6 => decision.contents[0].data.ct_sponsor = None,
+            7 => decision.contents[0].data.ct_is_video = Some(" Yes  ".to_owned()),
+            8 => decision.contents[0].data.ct_sponsored_by_override = Some("BLANK ".to_owned()),
+            9 => {
+                decision.contents[0].data.ct_sponsored_by_override =
+                    Some("Brought by blank".to_owned());
             }
+            10 => decision.priority_id = None,
+            _ => panic!("invalid mock_decision index"),
         }
+        decision
     }
 
     #[test]
@@ -384,7 +368,7 @@ mod tests {
             8 => spoc["sponsored_by_override"] = json!(""),
             9 => spoc["sponsored_by_override"] = json!("Brought by blank"),
             10 => spoc["priority"] = json!(100),
-            _ => panic!("invalid mock_spox index"),
+            _ => panic!("invalid mock_spoc index"),
         }
         spoc
     }
