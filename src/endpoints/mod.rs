@@ -1,6 +1,7 @@
 pub mod debug;
 pub mod delete_user;
 pub mod dockerflow;
+pub mod pulse;
 pub mod spocs;
 use crate::{geoip::GeoIp, APP_NAME};
 use std::{default::Default, path::PathBuf, sync::Arc};
