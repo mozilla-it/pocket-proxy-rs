@@ -13,7 +13,8 @@ FROM debian:bullseye-slim as production
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libssl1.1
+    libssl1.1 \
+    ca-certificates
 
 RUN groupadd --gid 10001 app && \
     useradd -g app --uid 10001 --shell /usr/sbin/nologin --no-create-home --home-dir /app app
@@ -21,7 +22,7 @@ RUN groupadd --gid 10001 app && \
 WORKDIR /app
 
 COPY --from=build /app/target/release/pocket-proxy .
-COPY --from=build /app/GeoLite2-Country.mmdb ./
+COPY --from=build /app/GeoIP2-City.mmdb ./
 COPY --from=build /app/version.json ./
 
 USER app
