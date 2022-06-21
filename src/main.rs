@@ -36,7 +36,6 @@ async fn main() -> Result<(), ProxyError> {
         human_logs,
         metrics_target,
         port,
-        trusted_proxy_list,
         version_file,
         adzerk_api_key,
         ..
@@ -57,7 +56,6 @@ async fn main() -> Result<(), ProxyError> {
                 .build()?,
         ),
         metrics,
-        trusted_proxies: trusted_proxy_list,
         log: app_log.clone(),
         version_file,
     };

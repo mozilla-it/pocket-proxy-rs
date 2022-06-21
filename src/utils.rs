@@ -1,5 +1,5 @@
 use crate::{endpoints::EndpointState, errors::ProxyError};
-use actix_web::{web::Data, HttpRequest};
+use actix_web::HttpRequest;
 use std::net::IpAddr;
 
 pub trait RequestClientIp<S> {
@@ -19,19 +19,12 @@ pub trait RequestTraceIps<'a> {
 
 impl RequestClientIp<EndpointState> for HttpRequest {
     fn client_ip(&self) -> Result<IpAddr, ProxyError> {
-        let trusted_proxy_list = &self
-            .app_data::<Data<EndpointState>>()
-            .expect("Expected app state")
-            .trusted_proxies;
+        let ip_addr = self.trace_ips()
+            .last()
+            .copied()
+            .unwrap();
 
-        let is_trusted_ip =
-            |ip: &&IpAddr| trusted_proxy_list.iter().any(|range| range.contains(*ip));
-
-        self.trace_ips()
-            .iter()
-            .find(|ip| !is_trusted_ip(ip))
-            .ok_or_else(|| ProxyError::new("Could not determine IP"))
-            .map(|ip| *ip)
+        Ok(ip_addr)
     }
 }
 
@@ -86,63 +79,14 @@ mod tests {
 
     #[test]
     fn get_client_ip_no_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let state = EndpointState::default();
-        assert_eq!(
-            state.trusted_proxies.len(),
-            0,
-            "Precondition: no trusted proxies by default"
-        );
-
         let req = TestRequest::get()
-            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
-            .app_data(Data::new(state))
+            .insert_header(("x-forwarded-for", "5.6.7.8"))
             .to_http_request();
 
         assert_eq!(
             req.client_ip()?,
             IpAddr::V4(Ipv4Addr::new(5, 6, 7, 8)),
             "With no proxies, the right-most ip should be used"
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn get_client_ip_one_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let state = EndpointState {
-            trusted_proxies: vec!["5.6.7.8/32".parse()?],
-            ..EndpointState::default()
-        };
-
-        let req = TestRequest::get()
-            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
-            .app_data(Data::new(state))
-            .to_http_request();
-
-        assert_eq!(
-            req.client_ip()?,
-            IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4)),
-            "With one proxy, the second-from-the-right ip should be used"
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn get_client_ip_too_many_proxies() -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let state = EndpointState {
-            trusted_proxies: vec!["5.6.7.8/32".parse()?, "1.2.3.4/32".parse()?],
-            ..EndpointState::default()
-        };
-
-        let req = TestRequest::get()
-            .insert_header(("x-forwarded-for", "1.2.3.4, 5.6.7.8"))
-            .app_data(Data::new(state))
-            .to_http_request();
-
-        assert!(
-            req.client_ip().is_err(),
-            "With too many proxies configured, no ip is given"
         );
 
         Ok(())
