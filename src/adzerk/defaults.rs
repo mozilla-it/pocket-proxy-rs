@@ -38,7 +38,8 @@ lazy_static! {
             "publishers": {
                 "example.com": 1
             }
-        })).unwrap();
+        }))
+        .unwrap();
 }
 
 #[cfg(test)]
