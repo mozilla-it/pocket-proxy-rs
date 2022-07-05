@@ -4,12 +4,12 @@ use actix_web::{http::StatusCode, HttpResponse};
 use serde_derive::Serialize;
 
 #[derive(Serialize)]
-struct PuleResponse {
+struct PulseResponse {
     pulse: String,
 }
 
 pub async fn pulse() -> Result<HttpResponse, ProxyError> {
-    let response = PuleResponse {
+    let response = PulseResponse {
         pulse: "ok".to_string(),
     };
 
